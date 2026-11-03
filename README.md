@@ -1,5 +1,7 @@
 # D.A.T.I. [Don’t Ask the Internet]
 
+[![CI](https://github.com/elijahsylar/dati/actions/workflows/ci.yml/badge.svg)](https://github.com/elijahsylar/dati/actions/workflows/ci.yml)
+
 A real-time multiplayer trivia platform for hosted bar trivia nights. Teams join from tablets by scanning a QR code, a host runs the game from a console, a TV display shows questions and the live leaderboard, and every team gets one "Ask the Internet" lifeline: a single 30-second search, announced to the whole room. It was built as a course project at the University of Colorado Denver, around a scenario of a neighborhood bar that wants to fill quiet weeknights.
 
 | Admin panel | Gameplay |
