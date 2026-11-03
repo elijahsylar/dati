@@ -1,0 +1,25 @@
+{
+  "name": "DATI",
+  "short_name": "DATI",
+  "description": "Trivia for live events.",
+  "start_url": "/join.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#1E3C6E",
+  "background_color": "#1E3C6E",
+  "icons": [
+    {
+      "src": "/icons/dati-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/dati-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

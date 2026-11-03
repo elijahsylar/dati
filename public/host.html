@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D.A.T.I. — Host Control</title>
+    <link rel="stylesheet" href="/css/admin.css">
+    <style>
+        .host-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 340px;
+            gap: 24px;
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+            align-items: start;
+        }
+        @media (max-width: 900px) {
+            .host-grid { grid-template-columns: 1fr; }
+        }
+        .state-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .state-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: var(--border);
+            color: var(--text-muted);
+        }
+        .state-badge.lobby            { background: #E9EEF8; color: var(--navy); }
+        .state-badge.question_active  { background: #E8F4EA; color: var(--success); }
+        .state-badge.question_locked  { background: #FFF4D6; color: var(--warning); }
+        .state-badge.question_revealed{ background: #F0E6FA; color: #6B21A8; }
+        .state-badge.intermission     { background: var(--border); color: var(--text-muted); }
+        .state-badge.ended            { background: #F8E0E0; color: var(--danger); }
+        .qnum {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .question-box {
+            padding: 20px;
+            background: var(--bg);
+            border-radius: var(--radius);
+            margin: 12px 0 16px;
+        }
+        .question-text {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        @media (max-width: 640px) {
+            .options-grid { grid-template-columns: 1fr; }
+        }
+        .option {
+            padding: 12px 14px;
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .option .letter {
+            font-weight: 700;
+            color: var(--navy);
+            min-width: 20px;
+        }
+        .option.correct {
+            border-color: var(--success);
+            background: #E8F4EA;
+        }
+        .option.correct .letter { color: var(--success); }
+        .timer-display {
+            font-size: 96px;
+            font-weight: 800;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            color: var(--navy);
+            line-height: 1;
+            padding: 16px 0;
+            letter-spacing: 2px;
+        }
+        .timer-display.warn { color: var(--warning); }
+        .timer-display.critical { color: var(--danger); animation: pulse 0.5s infinite alternate; }
+        .timer-display.locked { color: var(--text-muted); }
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.04); } }
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .controls button {
+            flex: 1;
+            min-width: 120px;
+            padding: 14px 18px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.05s;
+        }
+        .controls button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .controls button:not(:disabled):active { transform: scale(0.98); }
+        .btn-start   { background: var(--success); color: white; }
+        .btn-next    { background: var(--navy);    color: white; }
+        .btn-pause   { background: var(--warning); color: white; }
+        .btn-resume  { background: var(--navy-light); color: white; }
+        .btn-end     { background: var(--danger);  color: white; }
+        .control-note {
+            flex-basis: 100%;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+        .roster-list, .leaderboard-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0;
+        }
+        .roster-list li, .leaderboard-list li {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+        .roster-list li:last-child, .leaderboard-list li:last-child { border-bottom: none; }
+        .roster-list .team-meta { color: var(--text-muted); font-size: 12px; }
+        .leaderboard-list .rank {
+            font-weight: 700;
+            color: var(--navy);
+            min-width: 28px;
+        }
+        .leaderboard-list li:nth-child(1) .rank { color: var(--gold); font-size: 18px; }
+        .leaderboard-list .pts {
+            font-weight: 700;
+            color: var(--navy);
+            font-variant-numeric: tabular-nums;
+        }
+        .leaderboard-list .delta-correct   { color: var(--success); font-size: 11px; margin-left: 6px; }
+        .leaderboard-list .delta-incorrect { color: var(--danger); font-size: 11px; margin-left: 6px; }
+        .host-footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-muted);
+            font-size: 12px;
+            border-top: 1px solid var(--border);
+            margin-top: 24px;
+        }
+        .host-footer.disconnected { color: var(--danger); font-weight: 600; }
+        .event-list { margin-top: 16px; }
+        .event-list .event-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .event-list .event-row:hover {
+            border-color: var(--gold);
+            background: #FDF9EE;
+        }
+        .event-list .event-meta { font-size: 13px; color: var(--text-muted); }
+        .empty-state {
+            text-align: center;
+            padding: 32px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login-screen" class="login-wrap">
+    <div class="login-card">
+        <h2>🎯 D.A.T.I.</h2>
+        <p>Don't Ask The Internet — Host Control</p>
+        <div id="login-error" class="error-msg"></div>
+        <form onsubmit="login(event)">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="login-user" placeholder="admin" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="login-pass" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary">Sign In</button>
+        </form>
+    </div>
+</div>
+
+<!-- ===================== EVENT SELECT ===================== -->
+<div id="event-select-screen" style="display:none">
+    <nav class="navbar">
+        <h1>🎯 D.A.T.I. <span>Host</span></h1>
+        <div style="display:flex;align-items:center;gap:16px">
+            <a href="/" style="color:var(--gold);font-size:13px;text-decoration:none">Admin Panel</a>
+            <span class="user-info" id="user-display-1"></span>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="card">
+            <h2 style="color:var(--navy);margin-bottom:6px">Select an event to host</h2>
+            <p style="color:var(--text-muted);font-size:13px">
+                Only events with status <strong>Published</strong> are shown. Draft or completed events aren't playable.
+            </p>
+            <div class="event-list" id="event-list"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== CONTROL ROOM ===================== -->
+<div id="control-screen" style="display:none">
+    <nav class="navbar">
+        <h1>🎯 D.A.T.I. <span>Host</span></h1>
+        <div style="display:flex;align-items:center;gap:14px">
+            <span id="event-title-nav" style="font-size:13px;opacity:0.85"></span>
+            <button onclick="openDisplay()" title="Open the projector display in a new tab">Open Display</button>
+            <button onclick="backToEventSelect()">Change Event</button>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="host-grid">
+        <!-- main column -->
+        <div>
+            <div class="card">
+                <div class="state-row">
+                    <div>
+                        <h2 id="event-title" style="color:var(--navy);margin:0"></h2>
+                        <div class="qnum" id="qnum-display">Waiting to start…</div>
+                    </div>
+                    <span class="state-badge" id="state-badge">lobby</span>
+                </div>
+
+                <div class="question-box" id="question-box" style="display:none">
+                    <div class="question-text" id="question-text"></div>
+                    <div class="options-grid" id="options-grid"></div>
+                </div>
+
+                <div class="timer-display locked" id="timer-display">—</div>
+
+                <div class="controls">
+                    <button id="btn-start"  class="btn-start"  onclick="doStart()">Start Event</button>
+                    <button id="btn-next"   class="btn-next"   onclick="doNext()">Next Question</button>
+                    <button id="btn-pause"  class="btn-pause"  onclick="doPause()">Pause</button>
+                    <button id="btn-resume" class="btn-resume" onclick="doResume()">Resume</button>
+                    <button id="btn-end"    class="btn-end"    onclick="doEnd()">End Event</button>
+                    <p class="control-note">
+                        <strong>Pause</strong> stops the timer so you can handle a room issue — it does not save the clock.
+                        When you're ready, use <strong>Next Question</strong> to move on. "Resume" just tells the room play is active again.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- sidebar -->
+        <aside>
+            <div class="card">
+                <h3 style="color:var(--navy);margin:0 0 4px">Teams (<span id="team-count">0</span>)</h3>
+                <p style="font-size:12px;color:var(--text-muted);margin:0">Updates live as teams join.</p>
+                <ul class="roster-list" id="team-roster"></ul>
+                <div class="empty-state" id="team-empty">No teams joined yet.</div>
+            </div>
+
+            <div class="card" style="margin-top:16px">
+                <h3 style="color:var(--navy);margin:0 0 4px">Leaderboard</h3>
+                <p style="font-size:12px;color:var(--text-muted);margin:0">Updates after each answer.</p>
+                <ol class="leaderboard-list" id="leaderboard"></ol>
+                <div class="empty-state" id="leaderboard-empty">No scores yet.</div>
+            </div>
+        </aside>
+    </div>
+
+    <footer class="host-footer" id="footer-note">
+        If this page disconnects, refresh to reconnect. Phase 1 does not auto-reconnect the host.
+    </footer>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// --- state ---
+let token = localStorage.getItem('dati_token') || null;
+let currentUser = JSON.parse(localStorage.getItem('dati_user') || 'null');
+let selectedEvent = null;   // { id, title, status, time_limit_seconds, question_count, theme_name }
+let socket = null;
+let timerInterval = null;
+let timerDeadline = null;   // epoch ms when the question ends
+
+// --- toast (Phase 5; mirrors admin.js pattern, .toast styles already in admin.css) ---
+function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = `toast show ${type}`;
+    setTimeout(() => { el.className = 'toast'; }, 3000);
+}
+
+// --- auth / nav ---
+async function login(ev) {
+    ev.preventDefault();
+    const username = document.getElementById('login-user').value;
+    const password = document.getElementById('login-pass').value;
+    const errEl = document.getElementById('login-error');
+    errEl.textContent = '';
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (!res.ok) { errEl.textContent = data.error || 'Login failed'; return; }
+        token = data.token;
+        currentUser = data.user;
+        localStorage.setItem('dati_token', token);
+        localStorage.setItem('dati_user', JSON.stringify(currentUser));
+        showEventSelect();
+    } catch (e) {
+        errEl.textContent = 'Network error';
+    }
+}
+
+function logout() {
+    if (socket) { try { socket.disconnect(); } catch(_){} socket = null; }
+    localStorage.removeItem('dati_token');
+    localStorage.removeItem('dati_user');
+    token = null;
+    currentUser = null;
+    showLogin();
+}
+
+function showLogin() {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('event-select-screen').style.display = 'none';
+    document.getElementById('control-screen').style.display = 'none';
+}
+function showEventSelect() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('event-select-screen').style.display = 'block';
+    document.getElementById('control-screen').style.display = 'none';
+    const ud = document.getElementById('user-display-1');
+    if (ud && currentUser) ud.textContent = currentUser.display_name || currentUser.username;
+    loadPublishedEvents();
+}
+function showControl() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('event-select-screen').style.display = 'none';
+    document.getElementById('control-screen').style.display = 'block';
+}
+function backToEventSelect() {
+    if (socket) { try { socket.disconnect(); } catch(_){} socket = null; }
+    stopTimer();
+    selectedEvent = null;
+    showEventSelect();
+}
+
+// Phase 4 helper: opens /display.html for the currently selected event
+// in a new tab. Display page is public (no auth), keyed by ?event=<id>.
+function openDisplay() {
+    if (!selectedEvent || !selectedEvent.id) {
+        toast('Pick an event first', 'error');
+        return;
+    }
+    window.open(`/display.html?event=${selectedEvent.id}`, '_blank', 'noopener');
+}
+
+// --- event selection ---
+async function loadPublishedEvents() {
+    const list = document.getElementById('event-list');
+    list.innerHTML = '<div class="empty-state">Loading…</div>';
+    try {
+        const res = await fetch('/api/events?status=published');
+        const events = await res.json();
+        if (!Array.isArray(events) || events.length === 0) {
+            list.innerHTML = '<div class="empty-state">No published events. Go to the <a href="/" style="color:var(--navy)">admin panel</a> and publish one.</div>';
+            return;
+        }
+        list.innerHTML = '';
+        events.forEach(e => {
+            const row = document.createElement('div');
+            row.className = 'event-row';
+            row.onclick = () => pickEvent(e);
+            row.innerHTML = `
+                <div>
+                    <div style="font-weight:700;color:var(--navy)">${escapeHtml(e.title)}</div>
+                    <div class="event-meta">
+                        ${escapeHtml(e.theme_name)} · ${e.event_date.split('T')[0]} ·
+                        ${e.question_count} questions · ${e.time_limit_seconds}s each
+                    </div>
+                </div>
+                <button class="btn btn-gold">Host →</button>
+            `;
+            list.appendChild(row);
+        });
+    } catch (e) {
+        list.innerHTML = '<div class="empty-state" style="color:var(--danger)">Failed to load events.</div>';
+    }
+}
+
+function pickEvent(e) {
+    selectedEvent = e;
+    document.getElementById('event-title').textContent = e.title;
+    document.getElementById('event-title-nav').textContent = e.title;
+    resetUI();
+    connectSocket();
+    showControl();
+}
+
+// --- socket connection ---
+function connectSocket() {
+    if (socket) { try { socket.disconnect(); } catch(_){} }
+    socket = io('/host', { auth: { token }, reconnection: false });
+
+    socket.on('connect', () => {
+        setFooter('Connected. Watching event ' + selectedEvent.id + '.', false);
+        socket.emit('host:watch_event', { event_id: selectedEvent.id });
+        // Fetch snapshot state in parallel with the emit. Closes the race where
+        // players joined (or scored) before the host connected — broadcasts are
+        // fire-and-forget, so anyone not in the room at emit time never sees them.
+        // Any live broadcast arriving during this fetch window is de-duped by
+        // the existing Map.set in onTeamJoined / onScoresUpdate (idempotent by id).
+        loadSnapshots(selectedEvent.id).catch(err => console.warn('snapshot load failed:', err));
+    });
+    socket.on('connect_error', (err) => {
+        setFooter('Connection refused: ' + err.message + '. Try logging in again.', true);
+    });
+    socket.on('disconnect', (reason) => {
+        setFooter('Disconnected (' + reason + '). Refresh to reconnect.', true);
+        stopTimer();
+    });
+
+    // state & flow
+    socket.on('lobby:team_joined', onTeamJoined);
+    socket.on('question:show',     onQuestionShow);
+    socket.on('question:locked',   onQuestionLocked);
+    socket.on('question:revealed', onQuestionRevealed);
+    socket.on('scores:update',     onScoresUpdate);
+    socket.on('event:paused',      () => { setState('intermission'); stopTimer(); });
+    socket.on('event:resumed',     () => { /* state returns to whatever's next */ });
+    socket.on('game:ended',        onGameEnded);
+    socket.on('lifeline:used',     (p) => {
+        console.log('lifeline used by', p);
+        toast(`Team ${p.team_name} used their lifeline`, 'success');
+    });
+    socket.on('error',             onServerError);
+}
+
+// --- controls ---
+function doStart()  { socket && socket.emit('host:start_event',  { event_id: selectedEvent.id }); }
+function doNext()   { socket && socket.emit('host:next_question', { event_id: selectedEvent.id }); }
+function doPause()  { socket && socket.emit('host:pause_event',   { event_id: selectedEvent.id }); }
+function doResume() { socket && socket.emit('host:resume_event',  { event_id: selectedEvent.id }); }
+function doEnd() {
+    if (!confirm('End this event now? Scores are final; teams will see the leaderboard and the game will close.')) return;
+    socket && socket.emit('host:end_event', { event_id: selectedEvent.id });
+}
+
+// --- snapshot fetch on connect (closes broadcast-only-no-snapshot race) ---
+async function loadSnapshots(eventId) {
+    const headers = { 'Authorization': 'Bearer ' + token };
+    const [teamsRes, scoresRes] = await Promise.all([
+        fetch('/api/events/' + eventId + '/teams',  { headers }),
+        fetch('/api/events/' + eventId + '/scores', { headers }),
+    ]);
+    if (teamsRes.ok) {
+        const list = await teamsRes.json();
+        list.forEach(t => {
+            // Map.set is idempotent by key — if a live broadcast already
+            // populated this team_id during the race, we just refresh it.
+            teams.set(t.team_id, { team_name: t.team_name, member_count: t.member_count });
+            if (!scoresMap.has(t.team_id)) {
+                scoresMap.set(t.team_id, { team_name: t.team_name, points: 0, last_answer_correct: null });
+            }
+        });
+        renderRoster();
+    }
+    if (scoresRes.ok) {
+        const list = await scoresRes.json();
+        list.forEach(s => scoresMap.set(s.team_id, s));
+        renderLeaderboard();
+    }
+}
+
+// --- inbound handlers ---
+const teams = new Map();  // team_id -> { team_name, member_count }
+const scoresMap = new Map(); // team_id -> { team_name, points, last_answer_correct }
+
+function onTeamJoined(p) {
+    teams.set(p.team_id, { team_name: p.team_name, member_count: p.member_count });
+    if (!scoresMap.has(p.team_id)) {
+        scoresMap.set(p.team_id, { team_name: p.team_name, points: 0, last_answer_correct: null });
+    }
+    renderRoster();
+    renderLeaderboard();
+}
+
+function onQuestionShow(p) {
+    setState('question_active');
+    document.getElementById('question-box').style.display = 'block';
+    document.getElementById('question-text').textContent = p.question_text;
+    document.getElementById('qnum-display').textContent =
+        `Question ${p.question_number} of ${p.total_questions} — ${p.difficulty}`;
+    const grid = document.getElementById('options-grid');
+    grid.innerHTML = '';
+    ['A','B','C','D'].forEach(letter => {
+        const div = document.createElement('div');
+        div.className = 'option';
+        div.dataset.letter = letter;
+        div.innerHTML = `<span class="letter">${letter}.</span><span>${escapeHtml(p.options[letter])}</span>`;
+        grid.appendChild(div);
+    });
+    startTimer(p.time_limit_seconds);
+    setButtons({ start: false, next: false, pause: true, resume: false, end: true });
+}
+
+function onQuestionLocked(p) {
+    setState('question_locked');
+    stopTimer();
+    setTimerLabel('LOCKED');
+}
+
+function onQuestionRevealed(p) {
+    setState('question_revealed');
+    // highlight the correct option
+    document.querySelectorAll('#options-grid .option').forEach(el => {
+        if (el.dataset.letter === p.correct_option) el.classList.add('correct');
+    });
+    setButtons({ start: false, next: true, pause: false, resume: false, end: true });
+}
+
+function onScoresUpdate(p) {
+    scoresMap.clear();
+    (p.scores || []).forEach(s => scoresMap.set(s.team_id, s));
+    renderLeaderboard();
+}
+
+function onGameEnded(p) {
+    setState('ended');
+    stopTimer();
+    document.getElementById('question-box').style.display = 'none';
+    document.getElementById('qnum-display').textContent = 'Game over';
+    onScoresUpdate(p); // uses final_scores shape — let's call it directly
+    scoresMap.clear();
+    (p.final_scores || []).forEach(s => scoresMap.set(s.team_id, { ...s, last_answer_correct: null }));
+    renderLeaderboard();
+    let msg;
+    if (p.winner_team_id) {
+        const w = scoresMap.get(p.winner_team_id);
+        msg = `Winner: ${w ? w.team_name : 'team #' + p.winner_team_id}`;
+    } else if (p.tied_team_ids && p.tied_team_ids.length > 0) {
+        const names = p.tied_team_ids.map(id => (scoresMap.get(id)||{}).team_name || 'team #'+id);
+        msg = 'Tied: ' + names.join(', ');
+    } else {
+        msg = 'Game ended';
+    }
+    setFooter(msg + '. Refresh to host another event.', false);
+    setButtons({ start: false, next: false, pause: false, resume: false, end: false });
+}
+
+function onServerError(p) {
+    console.warn('server error:', p);
+    alert('Server error: ' + (p.code || '?') + '\n' + (p.message || ''));
+}
+
+// --- rendering ---
+function setState(status) {
+    const el = document.getElementById('state-badge');
+    el.textContent = status.replace('_', ' ');
+    el.className = 'state-badge ' + status;
+    // button enablement rough rules
+    if (status === 'lobby') {
+        setButtons({ start: true, next: false, pause: false, resume: false, end: true });
+    } else if (status === 'intermission') {
+        setButtons({ start: false, next: true, pause: false, resume: true, end: true });
+    }
+}
+
+function setButtons({ start, next, pause, resume, end }) {
+    document.getElementById('btn-start').disabled  = !start;
+    document.getElementById('btn-next').disabled   = !next;
+    document.getElementById('btn-pause').disabled  = !pause;
+    document.getElementById('btn-resume').disabled = !resume;
+    document.getElementById('btn-end').disabled    = !end;
+}
+
+function renderRoster() {
+    const list = document.getElementById('team-roster');
+    const empty = document.getElementById('team-empty');
+    document.getElementById('team-count').textContent = teams.size;
+    if (teams.size === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    list.innerHTML = '';
+    for (const [id, t] of teams) {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${escapeHtml(t.team_name)}</span><span class="team-meta">${t.member_count} player${t.member_count===1?'':'s'}</span>`;
+        list.appendChild(li);
+    }
+}
+
+function renderLeaderboard() {
+    const list = document.getElementById('leaderboard');
+    const empty = document.getElementById('leaderboard-empty');
+    const entries = Array.from(scoresMap.values()).sort((a, b) => b.points - a.points);
+    if (entries.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    list.innerHTML = '';
+    entries.forEach((s, i) => {
+        const li = document.createElement('li');
+        const delta = s.last_answer_correct === true  ? '<span class="delta-correct">✓</span>'
+                    : s.last_answer_correct === false ? '<span class="delta-incorrect">✗</span>'
+                    : '';
+        li.innerHTML = `<span><span class="rank">${i+1}.</span> ${escapeHtml(s.team_name)}${delta}</span><span class="pts">${s.points}</span>`;
+        list.appendChild(li);
+    });
+}
+
+// --- client timer (server is authoritative; this is a visual display) ---
+function startTimer(limitSeconds) {
+    stopTimer();
+    timerDeadline = Date.now() + limitSeconds * 1000;
+    tickTimer();
+    timerInterval = setInterval(tickTimer, 100);
+}
+function stopTimer() {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    timerDeadline = null;
+}
+function tickTimer() {
+    const el = document.getElementById('timer-display');
+    if (!timerDeadline) { setTimerLabel('—'); return; }
+    const ms = Math.max(0, timerDeadline - Date.now());
+    const s = Math.ceil(ms / 1000);
+    el.textContent = s;
+    el.classList.remove('warn', 'critical', 'locked');
+    if (s <= 5) el.classList.add('critical');
+    else if (s <= 10) el.classList.add('warn');
+    if (ms === 0) stopTimer();
+}
+function setTimerLabel(text) {
+    const el = document.getElementById('timer-display');
+    el.textContent = text;
+    el.classList.remove('warn', 'critical');
+    el.classList.add('locked');
+}
+
+function setFooter(msg, isError) {
+    const f = document.getElementById('footer-note');
+    f.textContent = msg;
+    f.classList.toggle('disconnected', !!isError);
+}
+
+function resetUI() {
+    teams.clear();
+    scoresMap.clear();
+    renderRoster();
+    renderLeaderboard();
+    document.getElementById('question-box').style.display = 'none';
+    document.getElementById('qnum-display').textContent = 'Waiting to start…';
+    setTimerLabel('—');
+    setState('lobby');
+    setFooter('If this page disconnects, refresh to reconnect. Phase 1 does not auto-reconnect the host.', false);
+}
+
+function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+// --- boot ---
+if (token && currentUser) showEventSelect();
+else showLogin();
+</script>
+<div id="toast" class="toast"></div>
+</body>
+</html>

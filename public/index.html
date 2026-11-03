@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>D.A.T.I. — Admin Panel</title>
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+<!-- ============================== LOGIN ============================== -->
+<div id="login-screen" class="login-wrap">
+    <div class="login-card">
+        <h2>🎯 D.A.T.I.</h2>
+        <p>Don't Ask The Internet — Admin Panel</p>
+        <div id="login-error" class="error-msg"></div>
+        <form onsubmit="login(event)">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="login-user" placeholder="admin" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="login-pass" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary">Sign In</button>
+        </form>
+    </div>
+</div>
+
+<!-- ============================== APP ============================== -->
+<div id="app-screen" style="display:none">
+    <nav class="navbar">
+        <h1>🎯 D.A.T.I. <span>Admin</span></h1>
+        <div style="display:flex;align-items:center;gap:16px">
+            <a href="/play.html" target="_blank" style="background:var(--gold);color:var(--navy);padding:6px 14px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">🎮 Test Game</a>
+            <span class="user-info" id="user-display"></span>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</div>
+        <div class="tab" data-tab="themes" onclick="switchTab('themes')">Themes</div>
+        <div class="tab" data-tab="questions" onclick="switchTab('questions')">Questions</div>
+        <div class="tab" data-tab="events" onclick="switchTab('events')">Events</div>
+    </div>
+
+    <div class="container">
+
+        <!-- ---- DASHBOARD ---- -->
+        <div id="page-dashboard" class="page active">
+            <div class="stats">
+                <div class="stat-card"><div class="number" id="stat-themes">—</div><div class="label">Themes</div></div>
+                <div class="stat-card"><div class="number" id="stat-questions">—</div><div class="label">Questions</div></div>
+                <div class="stat-card"><div class="number" id="stat-events">—</div><div class="label">Total Events</div></div>
+                <div class="stat-card"><div class="number" id="stat-upcoming">—</div><div class="label">Upcoming</div></div>
+            </div>
+            <div class="card">
+                <h2 style="color:var(--navy);margin-bottom:12px">Quick Start</h2>
+                <p style="color:var(--text-muted);font-size:14px;line-height:1.7">
+                    Welcome to the D.A.T.I. admin panel. Use the tabs above to manage
+                    trivia themes, add and edit questions, and schedule upcoming trivia events. Each event is tied to a
+                    theme and pulls from that theme's question bank. Events can be set to draft, published, or live status.
+                </p>
+            </div>
+        </div>
+
+        <!-- ---- THEMES ---- -->
+        <div id="page-themes" class="page">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Themes</h2>
+                    <button class="btn btn-gold" onclick="openThemeModal()">+ New Theme</button>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Name</th><th>Description</th><th>Questions</th><th>Active</th><th>Actions</th></tr></thead>
+                        <tbody id="themes-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ---- QUESTIONS ---- -->
+        <div id="page-questions" class="page">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Questions</h2>
+                    <div style="display:flex;gap:10px;align-items:center">
+                        <select id="question-theme-filter" onchange="loadQuestions()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px">
+                            <option value="">All Themes</option>
+                        </select>
+                        <button class="btn btn-gold" onclick="openQuestionModal()">+ New Question</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Theme</th><th>Question</th><th>Difficulty</th><th>Answer</th><th>Actions</th></tr></thead>
+                        <tbody id="questions-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ---- EVENTS ---- -->
+        <div id="page-events" class="page">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Events</h2>
+                    <button class="btn btn-gold" onclick="openEventModal()">+ New Event</button>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Title</th><th>Theme</th><th>Date</th><th>Time</th><th>Capacity</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="events-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================== MODALS ============================== -->
+
+<!-- Theme Modal -->
+<div id="theme-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('theme-modal')">
+    <div class="modal">
+        <h3 id="theme-modal-title">New Theme</h3>
+        <form onsubmit="saveTheme(event)">
+            <input type="hidden" id="theme-id">
+            <div class="form-group">
+                <label>Theme Name</label>
+                <input type="text" id="theme-name" placeholder="e.g. 90s Pop Culture" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="theme-desc" placeholder="A brief description of this theme..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('theme-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Theme</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Question Modal -->
+<div id="question-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('question-modal')">
+    <div class="modal">
+        <h3 id="q-modal-title">New Question</h3>
+        <form onsubmit="saveQuestion(event)">
+            <input type="hidden" id="q-id">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Theme</label>
+                    <select id="q-theme" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Difficulty</label>
+                    <select id="q-difficulty">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Question</label>
+                <textarea id="q-text" placeholder="Enter the trivia question..." required></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Option A</label><input type="text" id="q-a" required></div>
+                <div class="form-group"><label>Option B</label><input type="text" id="q-b" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Option C</label><input type="text" id="q-c" required></div>
+                <div class="form-group"><label>Option D</label><input type="text" id="q-d" required></div>
+            </div>
+            <div class="form-group">
+                <label>Correct Answer</label>
+                <select id="q-correct" required>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('question-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Question</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Event Modal -->
+<div id="event-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('event-modal')">
+    <div class="modal">
+        <h3 id="ev-modal-title">New Event</h3>
+        <form onsubmit="saveEvent(event)">
+            <input type="hidden" id="ev-id">
+            <div class="form-group">
+                <label>Event Title</label>
+                <input type="text" id="ev-title" placeholder="e.g. Presidents Day History Night" required>
+            </div>
+            <div class="form-group">
+                <label>Theme</label>
+                <select id="ev-theme" required></select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="ev-date" required>
+                </div>
+                <div class="form-group">
+                    <label>Start Time</label>
+                    <input type="time" id="ev-time" value="19:00" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Max Teams</label>
+                    <input type="number" id="ev-teams" value="30" min="1" max="50">
+                </div>
+                <div class="form-group">
+                    <label>Players Per Team</label>
+                    <input type="number" id="ev-players" value="5" min="1" max="10">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Questions Per Round</label>
+                    <input type="number" id="ev-questions" value="10" min="5" max="50">
+                </div>
+                <div class="form-group">
+                    <label>Time Limit (sec)</label>
+                    <input type="number" id="ev-timelimit" value="30" min="10" max="120">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('event-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Event</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- QR Code Modal -->
+<div id="qr-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('qr-modal')">
+    <div class="modal">
+        <h3 id="qr-modal-title">Join Code</h3>
+        <div style="text-align:center;padding:10px 0">
+            <img id="qr-img" alt="Join QR code"
+                 style="width:300px;height:300px;background:#F5F5F0;border-radius:8px"
+                 src="">
+            <div id="qr-code-display"
+                 style="font-size:36px;font-weight:800;font-family:'SF Mono',Menlo,Consolas,monospace;letter-spacing:6px;margin-top:18px;color:var(--navy)">
+                —
+            </div>
+            <p style="color:var(--text-muted);font-size:13px;margin:12px 0 0;line-height:1.5">
+                Scan the QR or enter the code at<br>
+                <strong style="color:var(--navy)" class="js-host" data-path="/join.html">/join.html</strong>
+            </p>
+        </div>
+        <div class="form-actions" style="margin-top:20px">
+            <button type="button" class="btn btn-outline" onclick="closeModal('qr-modal')">Close</button>
+            <button type="button" class="btn btn-outline" onclick="downloadQr()">Download PNG</button>
+            <button type="button" class="btn btn-primary" onclick="openPrintCard()">Print Cards</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script src="/js/admin.js"></script>
+<script>document.querySelectorAll('.js-host').forEach(function (el) { el.textContent = location.host + (el.dataset.path || ''); });</script>
+</body>
+</html>

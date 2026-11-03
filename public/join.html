@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DATI">
+    <link rel="apple-touch-icon" href="/icons/dati-icon-192.png">
+    <link rel="manifest" href="/manifest.json">
+    <title>D.A.T.I. — Join Game</title>
+    <link rel="stylesheet" href="/css/admin.css">
+    <style>
+        html, body { height: 100%; }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--navy) 0%, #0F1F3B 100%);
+            padding: 20px;
+            margin: 0;
+        }
+        .join-card {
+            background: white;
+            padding: 40px 28px;
+            border-radius: 16px;
+            max-width: 440px;
+            width: 100%;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.30);
+        }
+        .brand { text-align: center; margin-bottom: 24px; }
+        .brand-mark {
+            color: var(--navy);
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: 4px;
+            margin: 0;
+        }
+        .brand-mark span { color: var(--gold); }
+        .brand-sub {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+            letter-spacing: 0.5px;
+        }
+        .prompt {
+            text-align: center;
+            color: var(--text);
+            font-size: 15px;
+            margin: 0 0 18px;
+        }
+        .screen { display: none; }
+        .screen.active { display: block; }
+
+        /* ---- Screen 1: code entry ---- */
+        .code-input {
+            display: block;
+            width: 100%;
+            font-size: 38px;
+            font-weight: 700;
+            font-family: 'SF Mono', Menlo, Consolas, monospace;
+            text-align: center;
+            letter-spacing: 10px;
+            padding: 18px 8px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            text-transform: uppercase;
+            color: var(--navy);
+            background: var(--bg);
+            box-sizing: border-box;
+        }
+        .code-input:focus { outline: none; border-color: var(--gold); background: white; }
+        .code-input::placeholder { color: #C8C8C8; font-weight: 500; letter-spacing: 10px; }
+
+        /* ---- Big action button, shared across screens ---- */
+        .big-btn {
+            display: block;
+            width: 100%;
+            margin-top: 14px;
+            padding: 18px;
+            font-size: 17px;
+            font-weight: 700;
+            border: none;
+            border-radius: 12px;
+            background: var(--gold);
+            color: var(--navy);
+            cursor: pointer;
+            transition: transform 0.05s, opacity 0.15s;
+        }
+        .big-btn:active:not(:disabled) { transform: scale(0.98); }
+        .big-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .big-btn.secondary { background: white; color: var(--text-muted); border: 1px solid var(--border); }
+
+        .error-msg {
+            margin-top: 16px;
+            padding: 12px 14px;
+            background: #FFEBEE;
+            color: var(--danger);
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+            display: none;
+        }
+        .error-msg.visible { display: block; }
+
+        .hint {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 22px;
+            letter-spacing: 0.5px;
+        }
+        .legend {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        /* ---- Screen 2: team setup ---- */
+        .event-header {
+            text-align: center;
+            padding: 16px 12px;
+            background: var(--bg);
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+        .event-header h2 { color: var(--navy); margin: 0 0 4px; font-size: 20px; }
+        .event-header .theme { font-size: 13px; color: var(--text-muted); letter-spacing: 0.5px; }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: var(--text);
+            font-weight: 600;
+            margin: 16px 0 6px;
+        }
+        .form-label:first-child { margin-top: 0; }
+        .text-input {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            background: white;
+            box-sizing: border-box;
+        }
+        .text-input:focus { outline: none; border-color: var(--gold); }
+        .member-stepper {
+            display: flex;
+            gap: 0;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            align-items: stretch;
+            min-height: 48px;
+        }
+        .member-stepper button {
+            flex: 0 0 52px;
+            border: none;
+            background: var(--bg);
+            color: var(--navy);
+            font-size: 24px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .member-stepper button:active:not(:disabled) { background: var(--gold); color: white; }
+        .member-stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
+        .member-stepper .count {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--navy);
+            background: white;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ---- Screen 3: lobby ---- */
+        .lobby-status {
+            text-align: center;
+            padding: 28px 20px;
+            background: linear-gradient(135deg, #FDF9EE 0%, white 100%);
+            border: 2px solid var(--gold);
+            border-radius: 16px;
+            margin: 16px 0;
+        }
+        .lobby-status .you {
+            font-size: 13px;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .lobby-status .team-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--navy);
+            margin-bottom: 4px;
+        }
+        .lobby-status .meta {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .teams-count {
+            text-align: center;
+            padding: 24px 16px;
+            background: var(--bg);
+            border-radius: 12px;
+            margin: 16px 0;
+        }
+        .teams-count .num {
+            font-size: 42px;
+            font-weight: 800;
+            color: var(--navy);
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+        .teams-count .label {
+            font-size: 13px;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+        .waiting {
+            text-align: center;
+            color: var(--text);
+            font-size: 15px;
+            padding: 12px;
+            font-style: italic;
+        }
+        .waiting::after {
+            content: '…';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40%     { content: '.'; }
+            60%     { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        /* ---- Screen 4: gameplay placeholder ---- */
+        .gameplay-placeholder {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .gameplay-placeholder h2 {
+            color: var(--navy);
+            font-size: 28px;
+            margin: 20px 0 12px;
+        }
+        .gameplay-placeholder .event-title-large {
+            font-size: 15px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+        .gameplay-placeholder .note {
+            margin-top: 32px;
+            font-size: 11px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* ---- Touch optimizations (Phase 3) ---- */
+        body {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        input, textarea {
+            -webkit-user-select: text;
+            user-select: text;
+            -webkit-touch-callout: default;
+        }
+        button, .big-btn, .member-stepper button, .code-input, .text-input {
+            touch-action: manipulation;
+        }
+
+        /* ---- Honor system modal (Phase 3, phones only) ---- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            z-index: 100;
+            padding: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.visible { display: flex; }
+        .modal-card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px 24px;
+            max-width: 360px;
+            width: 100%;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+        }
+        .modal-card p {
+            color: var(--text);
+            font-size: 15px;
+            line-height: 1.5;
+            margin: 0 0 14px;
+        }
+        .modal-card p:last-of-type { margin-bottom: 22px; }
+
+        /* ---- Gameplay UI (Phase 6) ---- */
+        .gameplay { display: flex; flex-direction: column; gap: 14px; }
+        .gp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .gp-event-title {
+            font-size: 13px;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+        .gp-qmeta {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            flex: 0 0 auto;
+        }
+        .gp-qnum {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--navy);
+            letter-spacing: 0.5px;
+        }
+        .gp-timer {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--navy);
+            font-variant-numeric: tabular-nums;
+            min-width: 32px;
+            text-align: right;
+        }
+        .gp-timer.warn { color: var(--danger); }
+        .gp-timer.locked { color: var(--text-muted); }
+
+        .gp-question {
+            font-family: Georgia, "Times New Roman", Times, serif;
+            font-size: 22px;
+            line-height: 1.3;
+            color: var(--text);
+            text-align: center;
+            padding: 8px 4px 4px;
+        }
+        .gp-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .gp-opt {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            min-height: 56px;
+            padding: 12px 14px;
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 16px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, opacity 0.25s, transform 0.05s;
+        }
+        .gp-opt:active:not(:disabled) { transform: scale(0.985); }
+        .gp-opt:disabled { cursor: not-allowed; }
+        .gp-opt-letter {
+            flex: 0 0 auto;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg);
+            color: var(--navy);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 16px;
+        }
+        .gp-opt-body {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        /* State variants */
+        .gp-opt.submitting {
+            opacity: 0.7;
+            border-color: var(--gold);
+        }
+        .gp-opt.selected {
+            background: #FDF9EE;
+            border-color: var(--gold);
+            border-width: 3px;
+        }
+        .gp-opt.selected .gp-opt-letter {
+            background: var(--gold);
+            color: var(--navy);
+        }
+        .gp-opt.dimmed { opacity: 0.40; }
+        .gp-opt.correct {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+            opacity: 1;
+        }
+        .gp-opt.correct .gp-opt-letter {
+            background: white;
+            color: var(--success);
+        }
+        .gp-opt.wrong {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: white;
+            opacity: 1;
+        }
+        .gp-opt.wrong .gp-opt-letter {
+            background: white;
+            color: var(--danger);
+        }
+
+        .gp-status {
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            padding: 10px 12px;
+            background: var(--bg);
+            border-radius: 10px;
+            letter-spacing: 0.3px;
+        }
+        .gp-status.active     { background: #E8F4EA; color: var(--success); }
+        .gp-status.submitted  { background: #FDF9EE; color: var(--navy); }
+        .gp-status.locked     { background: #FFF4D6; color: var(--warning); }
+        .gp-status.correct    { background: var(--success); color: white; }
+        .gp-status.wrong      { background: var(--danger);  color: white; }
+        .gp-status.catching   { background: var(--bg); color: var(--text-muted); font-style: italic; }
+
+        /* iPad: 2x2 grid + bigger tap targets */
+        @media (min-width: 768px) {
+            .gp-question { font-size: 28px; padding: 12px 4px; }
+            .gp-options {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: 1fr 1fr;
+                gap: 14px;
+            }
+            .gp-opt { min-height: 64px; font-size: 17px; }
+            .gp-opt-letter { width: 42px; height: 42px; font-size: 18px; }
+        }
+
+        /* ---- Lifeline button + overlay (Phase 5) ---- */
+        .lifeline-btn {
+            display: block;
+            width: 100%;
+            margin-top: 32px;
+            padding: 22px;
+            font-size: 19px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            border: none;
+            border-radius: 14px;
+            background: var(--gold);
+            color: var(--navy);
+            cursor: pointer;
+            min-height: 64px;
+            box-shadow: 0 4px 14px rgba(212, 168, 67, 0.35);
+            transition: transform 0.05s, opacity 0.15s;
+        }
+        .lifeline-btn:active:not(:disabled) { transform: scale(0.98); }
+        .lifeline-btn:disabled {
+            background: var(--border);
+            color: var(--text-muted);
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        .lifeline-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: white;
+            z-index: 200;
+            flex-direction: column;
+        }
+        .lifeline-overlay.visible { display: flex; }
+        .lifeline-overlay__chrome {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--navy);
+            color: white;
+            flex: 0 0 auto;
+        }
+        .lifeline-overlay__timer {
+            font-size: 32px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            color: var(--gold);
+            letter-spacing: 2px;
+        }
+        .lifeline-overlay__close {
+            min-width: 88px;
+            min-height: 44px;
+            padding: 10px 18px;
+            border: 2px solid white;
+            border-radius: 8px;
+            background: transparent;
+            color: white;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .lifeline-overlay__close:active { background: rgba(255,255,255,0.15); }
+        .lifeline-overlay__honor {
+            background: var(--bg);
+            color: var(--text);
+            font-size: 13px;
+            text-align: center;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            flex: 0 0 auto;
+        }
+        .lifeline-overlay__iframe {
+            flex: 1 1 auto;
+            width: 100%;
+            border: none;
+            background: white;
+            -webkit-overflow-scrolling: touch;
+        }
+    </style>
+</head>
+<body>
+
+<!-- =================== SCREEN 1: CODE ENTRY =================== -->
+<div id="screen-1" class="join-card screen">
+    <div class="brand">
+        <h1 class="brand-mark">D.A.T.I<span>.</span></h1>
+        <div class="brand-sub">DON'T ASK THE INTERNET</div>
+    </div>
+    <p class="prompt">Enter the code from your host</p>
+    <input type="text" id="code-input" class="code-input" placeholder="XXX-XXX"
+           inputmode="text" autocapitalize="characters" autocomplete="off"
+           autocorrect="off" spellcheck="false" maxlength="7">
+    <button id="find-btn" class="big-btn" onclick="submitCode()" disabled>Find Game</button>
+    <div id="code-error" class="error-msg"></div>
+    <div class="hint js-host"></div>
+    <div class="legend">Codes use A–Z and 2–9 (no 0, O, 1, I, L)</div>
+</div>
+
+<!-- =================== SCREEN 2: TEAM SETUP =================== -->
+<div id="screen-2" class="join-card screen">
+    <div class="event-header">
+        <h2 id="s2-event-title">—</h2>
+        <div class="theme" id="s2-theme">—</div>
+    </div>
+    <label class="form-label" for="team-name-input">Team name</label>
+    <input type="text" id="team-name-input" class="text-input"
+           placeholder="Your team name" maxlength="50" autocomplete="off">
+    <label class="form-label">How many players?</label>
+    <div class="member-stepper">
+        <button type="button" id="mc-minus" onclick="changeMemberCount(-1)" aria-label="Fewer">−</button>
+        <div class="count" id="mc-count">1</div>
+        <button type="button" id="mc-plus" onclick="changeMemberCount(1)" aria-label="More">+</button>
+    </div>
+    <button id="join-btn" class="big-btn" onclick="submitJoin()" style="margin-top:20px" disabled>Join Game</button>
+    <button class="big-btn secondary" onclick="backToScreen1()">Back</button>
+    <div id="join-error" class="error-msg"></div>
+</div>
+
+<!-- =================== SCREEN 3: LOBBY =================== -->
+<div id="screen-3" class="join-card screen">
+    <div class="event-header">
+        <h2 id="s3-event-title">—</h2>
+        <div class="theme" id="s3-theme">—</div>
+    </div>
+    <div class="lobby-status">
+        <div class="you">You're in as</div>
+        <div class="team-name" id="s3-team-name">—</div>
+        <div class="meta" id="s3-meta">— players</div>
+    </div>
+    <div class="teams-count">
+        <div class="num" id="s3-teams-num">—</div>
+        <div class="label">Teams Ready</div>
+    </div>
+    <div class="waiting">Waiting for the host to start</div>
+    <button class="big-btn secondary" onclick="leaveGame()" style="margin-top:20px">Leave Game</button>
+</div>
+
+<!-- =================== SCREEN 4: GAMEPLAY PLACEHOLDER =================== -->
+<!-- Phase 3 will replace this entirely with real gameplay UI. -->
+<div id="screen-4" class="join-card screen">
+    <div class="gameplay">
+        <div class="gp-header">
+            <div class="gp-event-title" id="s4-event-title">.</div>
+            <div class="gp-qmeta">
+                <span class="gp-qnum" id="s4-qnum">.</span>
+                <span class="gp-timer" id="s4-timer">.</span>
+            </div>
+        </div>
+
+        <div class="gp-question" id="s4-qtext">Get ready.</div>
+
+        <div class="gp-options" id="s4-options">
+            <button class="gp-opt" data-letter="A" type="button" onclick="submitAnswer('A')" disabled>
+                <span class="gp-opt-letter">A</span>
+                <span class="gp-opt-body" id="s4-opt-A">.</span>
+            </button>
+            <button class="gp-opt" data-letter="B" type="button" onclick="submitAnswer('B')" disabled>
+                <span class="gp-opt-letter">B</span>
+                <span class="gp-opt-body" id="s4-opt-B">.</span>
+            </button>
+            <button class="gp-opt" data-letter="C" type="button" onclick="submitAnswer('C')" disabled>
+                <span class="gp-opt-letter">C</span>
+                <span class="gp-opt-body" id="s4-opt-C">.</span>
+            </button>
+            <button class="gp-opt" data-letter="D" type="button" onclick="submitAnswer('D')" disabled>
+                <span class="gp-opt-letter">D</span>
+                <span class="gp-opt-body" id="s4-opt-D">.</span>
+            </button>
+        </div>
+
+        <div class="gp-status" id="s4-status">Waiting for the host to start.</div>
+
+        <button id="lifeline-btn" class="lifeline-btn" onclick="useLifeline()">Use Lifeline</button>
+        <div class="note">One internet search per game. 30 seconds.</div>
+        <div id="lifeline-error" class="error-msg"></div>
+    </div>
+</div>
+
+<!-- =================== HONOR SYSTEM MODAL (phones only) =================== -->
+<div id="honor-modal" class="modal-overlay">
+    <div class="modal-card">
+        <p>You've joined on mobile.</p>
+        <p>We can't lock your access to the internet. The lifeline button will appear inside DATI when it's your turn to use it. Please use an honor system and refrain from asking the internet unless you've been given a pass.</p>
+        <button class="big-btn" onclick="dismissHonorModal()">I understand</button>
+    </div>
+</div>
+
+<!-- =================== LIFELINE OVERLAY (Phase 5) =================== -->
+<div id="lifeline-overlay" class="lifeline-overlay">
+    <div class="lifeline-overlay__chrome">
+        <div class="lifeline-overlay__timer" id="lifeline-timer">30</div>
+        <button class="lifeline-overlay__close" onclick="closeLifelineOverlay()" aria-label="Close">Close</button>
+    </div>
+    <div class="lifeline-overlay__honor">Use this 30 seconds for the current question only. The honor system is on you.</div>
+    <iframe id="lifeline-iframe" class="lifeline-overlay__iframe" title="Search" src="about:blank"></iframe>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// =============================================================
+//  Device detection (Phase 3)
+//  Returns 'ipad' | 'phone' | 'desktop'.
+//  Modern iPadOS Safari reports as Macintosh + touch, so we treat
+//  any touch-capable Mac UA at >=768px as an iPad.
+// =============================================================
+function detectDeviceType() {
+    const ua = navigator.userAgent;
+    const w = window.innerWidth;
+    const hasTouch = (navigator.maxTouchPoints || 0) > 1;
+    const isIPadUA = /iPad/.test(ua) || (/Macintosh/.test(ua) && hasTouch);
+    if (w >= 768 && isIPadUA) return 'ipad';
+    if (w < 768) return 'phone';
+    return 'desktop';
+}
+const DEVICE = detectDeviceType();
+
+// =============================================================
+//  State
+// =============================================================
+const STORAGE_KEY = 'dati_player_session';
+const JOIN_ALPHABET = /[ABCDEFGHJKMNPQRSTUVWXYZ23456789]/g;
+
+let state = {
+    event: null,         // { event_id, title, theme_name, status, max_teams, max_players_per_team, current_team_count }
+    code: null,          // canonical 6-char
+    memberCount: 1,
+    socket: null,
+};
+
+// =============================================================
+//  Session helpers (Phase 5)
+// =============================================================
+function readSession() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }
+    catch (_) { return null; }
+}
+function writeSession(s) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (_) {}
+}
+
+// =============================================================
+//  Lifeline (Phase 5): one 30s search per team per game.
+//  Server contract (server/socket.js): emit team:use_lifeline,
+//  ack { accepted: true } | { error: { code, message } }.
+//  Possible error codes: not_authenticated, not_found,
+//  lifeline_already_used, db_error.
+// =============================================================
+const LIFELINE_DURATION_SEC = 30;
+// Lifeline iframe loads from our own /api/lifeline/search proxy.
+// Server-side proxy fetches DDG results and sanitizes them.
+// Direct embed of search engines blocked by CSP frame-ancestors 'self'.
+const LIFELINE_URL = '/api/lifeline/search';
+let lifelineTimerId = null;
+let lifelineActive = false;
+
+function syncLifelineButtonFromStorage() {
+    const btn = document.getElementById('lifeline-btn');
+    const session = readSession();
+    if (session && session.lifeline_used === true) {
+        btn.disabled = true;
+        btn.textContent = 'Lifeline Used';
+    } else {
+        btn.disabled = false;
+        btn.textContent = 'Use Lifeline';
+    }
+    document.getElementById('lifeline-error').classList.remove('visible');
+}
+
+function markLifelineUsedInStorage() {
+    const session = readSession();
+    if (!session) return;
+    session.lifeline_used = true;
+    writeSession(session);
+}
+
+function showLifelineError(msg) {
+    const el = document.getElementById('lifeline-error');
+    el.textContent = msg;
+    el.classList.add('visible');
+}
+
+function useLifeline() {
+    if (lifelineActive) return;
+    const btn = document.getElementById('lifeline-btn');
+    if (btn.disabled) return;
+    if (!state.socket) {
+        showLifelineError('Not connected. Refresh and try again.');
+        return;
+    }
+    btn.disabled = true; // prevent double-tap while ack is in flight
+    document.getElementById('lifeline-error').classList.remove('visible');
+
+    state.socket.emit('team:use_lifeline', undefined, (ack) => {
+        if (!ack || ack.error) {
+            const code = ack && ack.error && ack.error.code;
+            const map = {
+                lifeline_already_used: 'Your team has already used its lifeline.',
+                not_authenticated:     'Session expired. Refresh to continue.',
+                not_found:             'Team session no longer valid. Refresh to continue.',
+                db_error:              'Server error. Try again in a moment.',
+            };
+            const msg = map[code] || (ack && ack.error && ack.error.message) || 'Could not start lifeline.';
+            showLifelineError(msg);
+            if (code === 'lifeline_already_used') {
+                // Server is the source of truth: persist + lock button.
+                markLifelineUsedInStorage();
+                syncLifelineButtonFromStorage();
+            } else {
+                // Recoverable: let the user retry.
+                btn.disabled = false;
+            }
+            return;
+        }
+        openLifelineOverlay();
+    });
+}
+
+function openLifelineOverlay() {
+    lifelineActive = true;
+    const overlay = document.getElementById('lifeline-overlay');
+    const iframe  = document.getElementById('lifeline-iframe');
+    const timerEl = document.getElementById('lifeline-timer');
+    iframe.src = LIFELINE_URL;
+    let remaining = LIFELINE_DURATION_SEC;
+    timerEl.textContent = remaining;
+    overlay.classList.add('visible');
+    lifelineTimerId = setInterval(() => {
+        remaining -= 1;
+        timerEl.textContent = remaining;
+        if (remaining <= 0) closeLifelineOverlay();
+    }, 1000);
+}
+
+function closeLifelineOverlay() {
+    if (lifelineTimerId) { clearInterval(lifelineTimerId); lifelineTimerId = null; }
+    const overlay = document.getElementById('lifeline-overlay');
+    const iframe  = document.getElementById('lifeline-iframe');
+    overlay.classList.remove('visible');
+    // Unload iframe to free memory + stop any audio/video.
+    iframe.src = 'about:blank';
+    lifelineActive = false;
+    markLifelineUsedInStorage();
+    syncLifelineButtonFromStorage();
+}
+
+// =============================================================
+//  Honor system modal (phones only, once per session)
+// =============================================================
+function maybeShowHonorModal() {
+    if (DEVICE !== 'phone') return;
+    let session = null;
+    try { session = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (_) {}
+    if (session && session.honor_acknowledged === true) return;
+    document.getElementById('honor-modal').classList.add('visible');
+}
+function dismissHonorModal() {
+    document.getElementById('honor-modal').classList.remove('visible');
+    let session = null;
+    try { session = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (_) {}
+    if (!session) return;
+    session.honor_acknowledged = true;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(session)); } catch (_) {}
+}
+
+// =============================================================
+//  Screen routing
+// =============================================================
+function showScreen(n) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(`screen-${n}`).classList.add('active');
+}
+
+function backToScreen1() {
+    if (state.socket) { try { state.socket.disconnect(); } catch(_){} state.socket = null; }
+    document.getElementById('join-error').classList.remove('visible');
+    showScreen(1);
+}
+
+// =============================================================
+//  Code formatting + Screen 1 handler
+// =============================================================
+function formatCode(raw) {
+    const cleaned = (String(raw || '').toUpperCase().match(JOIN_ALPHABET) || []).join('').slice(0, 6);
+    if (cleaned.length <= 3) return cleaned;
+    return cleaned.slice(0, 3) + '-' + cleaned.slice(3);
+}
+
+const codeInput  = document.getElementById('code-input');
+const findBtn    = document.getElementById('find-btn');
+const codeError  = document.getElementById('code-error');
+
+function rawCode() { return codeInput.value.replace('-', ''); }
+
+codeInput.addEventListener('input', () => {
+    codeInput.value = formatCode(codeInput.value);
+    findBtn.disabled = rawCode().length !== 6;
+    codeError.classList.remove('visible');
+});
+codeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !findBtn.disabled) submitCode();
+});
+
+async function submitCode() {
+    const code = rawCode();
+    if (code.length !== 6) return;
+    codeError.classList.remove('visible');
+    findBtn.disabled = true;
+    try {
+        const res = await fetch('/api/join/' + code);
+        if (res.status === 404) {
+            codeError.textContent = 'Event not found. Check the code and try again.';
+            codeError.classList.add('visible');
+            findBtn.disabled = false;
+            return;
+        }
+        if (!res.ok) {
+            codeError.textContent = 'Server error. Try again in a moment.';
+            codeError.classList.add('visible');
+            findBtn.disabled = false;
+            return;
+        }
+        state.event = await res.json();
+        state.code = code;
+        advanceToScreen2();
+    } catch (err) {
+        codeError.textContent = 'Network error. Check your connection.';
+        codeError.classList.add('visible');
+        findBtn.disabled = false;
+    }
+}
+
+// =============================================================
+//  Screen 2: team setup
+// =============================================================
+const teamNameInput = document.getElementById('team-name-input');
+const joinBtn       = document.getElementById('join-btn');
+const joinError     = document.getElementById('join-error');
+const mcCountEl     = document.getElementById('mc-count');
+const mcMinus       = document.getElementById('mc-minus');
+const mcPlus        = document.getElementById('mc-plus');
+
+function advanceToScreen2() {
+    document.getElementById('s2-event-title').textContent = state.event.title;
+    document.getElementById('s2-theme').textContent = state.event.theme_name;
+    // Reset form
+    teamNameInput.value = '';
+    state.memberCount = 1;
+    renderMemberCount();
+    updateJoinBtnEnabled();
+    joinError.classList.remove('visible');
+    showScreen(2);
+    // Pre-focus for fast entry
+    setTimeout(() => teamNameInput.focus(), 100);
+}
+
+function renderMemberCount() {
+    mcCountEl.textContent = state.memberCount;
+    mcMinus.disabled = state.memberCount <= 1;
+    mcPlus.disabled  = state.memberCount >= (state.event?.max_players_per_team || 5);
+}
+
+function changeMemberCount(delta) {
+    const max = state.event?.max_players_per_team || 5;
+    state.memberCount = Math.max(1, Math.min(max, state.memberCount + delta));
+    renderMemberCount();
+}
+
+function updateJoinBtnEnabled() {
+    joinBtn.disabled = teamNameInput.value.trim().length === 0;
+}
+
+teamNameInput.addEventListener('input', () => {
+    updateJoinBtnEnabled();
+    joinError.classList.remove('visible');
+});
+teamNameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !joinBtn.disabled) submitJoin();
+});
+
+async function submitJoin() {
+    const teamName = teamNameInput.value.trim();
+    if (!teamName) return;
+    joinError.classList.remove('visible');
+    joinBtn.disabled = true;
+
+    // Connect guest socket
+    const socket = io('/player', { transports: ['websocket'], reconnection: false });
+    state.socket = socket;
+
+    const failAndRestore = (msg) => {
+        joinError.textContent = msg;
+        joinError.classList.add('visible');
+        joinBtn.disabled = false;
+        try { socket.disconnect(); } catch(_) {}
+        state.socket = null;
+    };
+
+    socket.on('connect_error', () => failAndRestore('Could not connect to server. Try again.'));
+
+    socket.on('connect', () => {
+        socket.emit('team:join', {
+            event_id: state.event.event_id,
+            team_name: teamName,
+            member_count: state.memberCount,
+        }, (ack) => {
+            if (!ack || ack.error) {
+                const code = ack?.error?.code || 'unknown';
+                const map = {
+                    duplicate_team_name: 'That team name is already taken for this event. Try another.',
+                    event_not_joinable:  'This event is no longer accepting teams.',
+                    event_not_found:     'Event no longer available.',
+                    invalid_input:       'Invalid team name.',
+                };
+                failAndRestore(map[code] || (ack?.error?.message) || 'Could not join. Try again.');
+                return;
+            }
+            // Persist session
+            const session = {
+                session_token: ack.session_token,
+                team_id: ack.team_id,
+                event_id: state.event.event_id,
+                team_name: teamName,
+                code: state.code,
+                member_count: state.memberCount,
+            };
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(session)); } catch(_) {}
+            mountLobbyWithSocket(socket, session, state.event);
+        });
+    });
+}
+
+// =============================================================
+//  Screen 3: lobby
+// =============================================================
+function mountLobbyWithSocket(socket, session, eventData) {
+    document.getElementById('s3-event-title').textContent = eventData.title;
+    document.getElementById('s3-theme').textContent = eventData.theme_name;
+    document.getElementById('s3-team-name').textContent = session.team_name;
+    document.getElementById('s3-meta').textContent =
+        `${session.member_count} player${session.member_count === 1 ? '' : 's'}`;
+    // Start count from API-known value; lobby:team_joined broadcast will refresh it.
+    document.getElementById('s3-teams-num').textContent = eventData.current_team_count || '—';
+
+    socket.on('lobby:team_joined', (p) => {
+        document.getElementById('s3-teams-num').textContent = p.total_teams;
+    });
+    // Phase 6: gameplay listeners are wired here so they're ready before
+    // the host starts. question:show transitions Screen 3 → Screen 4.
+    wireGameplayListeners(socket, eventData);
+    state.socket = socket;
+    showScreen(3);
+    maybeShowHonorModal();
+}
+
+async function leaveGame() {
+    if (!confirm('Leave this game? Your team will be removed and you\'ll need to rejoin with a new team name.')) return;
+    if (state.socket) { try { state.socket.disconnect(); } catch(_) {} state.socket = null; }
+    localStorage.removeItem(STORAGE_KEY);
+    showScreen(1);
+}
+
+// =============================================================
+//  Screen 4: gameplay (Phase 6)
+//  Per-question state machine + answer submission.
+//  Server contract (server/socket.js):
+//    emit team:submit_answer { question_id, selected_option, response_time_ms }
+//    ack { accepted: true, points_earned, is_correct } | { error: { code, message } }
+//    Error codes: not_authenticated, invalid_input, invalid_timing,
+//                 invalid_state, wrong_question, unknown_question,
+//                 already_answered, db_error
+//  Reveal correctness ONLY on question:revealed broadcast (synced with
+//  the projector). is_correct in the ack is intentionally unused.
+// =============================================================
+const gp = {
+    questionId:        null,
+    state:             'idle',  // idle|active|submitting|submitted|locked|revealed|catching
+    selectedOption:    null,
+    correctOption:     null,
+    questionStartedMs: null,    // ms epoch
+    timeLimitMs:       null,
+    timerId:           null,
+    timerEnd:          null,
+};
+
+function $s(id) { return document.getElementById(id); }
+
+function setStatus(text, cls) {
+    const el = $s('s4-status');
+    el.textContent = text;
+    el.className = 'gp-status' + (cls ? ' ' + cls : '');
+}
+
+function setTimerDisplay(secs) {
+    $s('s4-timer').textContent = secs == null ? '' : String(secs);
+}
+
+function startGameplayTimer(endMs) {
+    stopGameplayTimer();
+    gp.timerEnd = endMs;
+    $s('s4-timer').classList.remove('warn', 'locked');
+    tickGameplayTimer();
+    gp.timerId = setInterval(tickGameplayTimer, 250);
+}
+function tickGameplayTimer() {
+    const remainingMs = Math.max(0, gp.timerEnd - Date.now());
+    const secs = Math.ceil(remainingMs / 1000);
+    setTimerDisplay(secs);
+    $s('s4-timer').classList.toggle('warn', secs <= 5 && secs > 0);
+    if (remainingMs <= 0) {
+        stopGameplayTimer();
+        // Pre-disable buttons (player UX) but keep visual state pending
+        // server's question:locked broadcast.
+        if (gp.state === 'active' || gp.state === 'submitting') {
+            disableAllOptionButtons();
+        }
+    }
+}
+function stopGameplayTimer() {
+    if (gp.timerId) { clearInterval(gp.timerId); gp.timerId = null; }
+}
+
+function clearOptionStates() {
+    document.querySelectorAll('#s4-options .gp-opt').forEach(el => {
+        el.classList.remove('submitting', 'selected', 'dimmed', 'correct', 'wrong');
+    });
+}
+function disableAllOptionButtons() {
+    document.querySelectorAll('#s4-options .gp-opt').forEach(el => { el.disabled = true; });
+}
+function enableAllOptionButtons() {
+    document.querySelectorAll('#s4-options .gp-opt').forEach(el => { el.disabled = false; });
+}
+
+function renderQuestionShow(p, eventData) {
+    // p: { question_id, question_text, options:{A,B,C,D}, difficulty,
+    //      time_limit_seconds, question_number, total_questions, [started_at] }
+    if (eventData) $s('s4-event-title').textContent = eventData.title;
+    $s('s4-qnum').textContent  = `Q ${p.question_number}/${p.total_questions}`;
+    $s('s4-qtext').textContent = p.question_text || '';
+    ['A','B','C','D'].forEach(L => {
+        $s('s4-opt-' + L).textContent = (p.options && p.options[L]) || '';
+    });
+
+    gp.questionId        = p.question_id;
+    gp.selectedOption    = null;
+    gp.correctOption     = null;
+    gp.questionStartedMs = p.started_at ? new Date(p.started_at).getTime() : Date.now();
+    gp.timeLimitMs       = (p.time_limit_seconds || 0) * 1000;
+
+    clearOptionStates();
+    enableAllOptionButtons();
+    gp.state = 'active';
+
+    startGameplayTimer(gp.questionStartedMs + gp.timeLimitMs);
+    setStatus('Tap your answer.', 'active');
+    showScreen(4);
+}
+
+function renderQuestionLocked() {
+    stopGameplayTimer();
+    setTimerDisplay(0);
+    $s('s4-timer').classList.add('locked');
+    disableAllOptionButtons();
+    if (gp.state === 'submitted') {
+        setStatus('Answer locked in.', 'submitted');
+    } else {
+        setStatus('Time is up.', 'locked');
+    }
+    gp.state = 'locked';
+}
+
+function renderQuestionRevealed(correctLetter) {
+    gp.correctOption = correctLetter;
+    stopGameplayTimer();
+    disableAllOptionButtons();
+    document.querySelectorAll('#s4-options .gp-opt').forEach(el => {
+        el.classList.remove('submitting', 'selected', 'dimmed');
+        if (el.dataset.letter === correctLetter) {
+            el.classList.add('correct');
+        } else if (gp.selectedOption && el.dataset.letter === gp.selectedOption) {
+            el.classList.add('wrong');
+        } else {
+            el.classList.add('dimmed');
+        }
+    });
+    if (gp.selectedOption == null) {
+        // Either we never submitted (timed out) OR we joined mid-question
+        // without a submission record. Either way, no win/loss verdict.
+        setStatus(`Correct answer was ${correctLetter}.`, 'locked');
+    } else if (gp.selectedOption === correctLetter) {
+        setStatus('Correct.', 'correct');
+    } else {
+        setStatus(`Wrong. Correct answer was ${correctLetter}.`, 'wrong');
+    }
+    gp.state = 'revealed';
+}
+
+function renderCatchingUp(currentQuestion, correctOption) {
+    // Late-join after a question has been revealed. Render the question
+    // text + options and highlight the correct one, but no win/loss
+    // verdict (we have no submission record). Wait for next question:show.
+    $s('s4-qnum').textContent  = `Q ${currentQuestion.question_number}/${currentQuestion.total_questions}`;
+    $s('s4-qtext').textContent = currentQuestion.question_text || '';
+    ['A','B','C','D'].forEach(L => {
+        $s('s4-opt-' + L).textContent = (currentQuestion.options && currentQuestion.options[L]) || '';
+    });
+    gp.questionId      = currentQuestion.question_id;
+    gp.selectedOption  = null;
+    gp.correctOption   = correctOption;
+    clearOptionStates();
+    disableAllOptionButtons();
+    setTimerDisplay(0);
+    $s('s4-timer').classList.add('locked');
+    if (correctOption) {
+        document.querySelectorAll('#s4-options .gp-opt').forEach(el => {
+            if (el.dataset.letter === correctOption) el.classList.add('correct');
+            else el.classList.add('dimmed');
+        });
+    }
+    setStatus('Catching up.', 'catching');
+    gp.state = 'catching';
+}
+
+function submitAnswer(letter) {
+    if (gp.state !== 'active') return;
+    if (!state.socket) return;
+    if (gp.questionId == null) return;
+
+    gp.selectedOption = letter;
+    gp.state = 'submitting';
+    const responseTimeMs = Math.max(0, Date.now() - gp.questionStartedMs);
+
+    // Visually mark the chosen one immediately + dim others.
+    document.querySelectorAll('#s4-options .gp-opt').forEach(el => {
+        if (el.dataset.letter === letter) {
+            el.classList.add('submitting', 'selected');
+        } else {
+            el.classList.add('dimmed');
+        }
+    });
+    disableAllOptionButtons();
+    setStatus('Sending answer.', 'submitted');
+
+    state.socket.emit('team:submit_answer', {
+        question_id:      gp.questionId,
+        selected_option:  letter,
+        response_time_ms: responseTimeMs,
+    }, (ack) => {
+        if (gp.state !== 'submitting') return; // ignore stale ack (next question already moved on)
+        if (!ack || ack.error) {
+            const code = ack && ack.error && ack.error.code;
+            const map = {
+                already_answered:  'Your team already answered this question.',
+                invalid_state:     'Question is no longer accepting answers.',
+                wrong_question:    'That question is no longer current.',
+                not_authenticated: 'Session expired. Refresh to continue.',
+                invalid_timing:    'Submission was too late.',
+            };
+            const msg = map[code] || (ack && ack.error && ack.error.message) || 'Could not submit. Try again.';
+            // Server rejected. Treat as locked-without-submission visually
+            // (server is the source of truth; the option is gone).
+            gp.selectedOption = null;
+            document.querySelectorAll('#s4-options .gp-opt').forEach(el => {
+                el.classList.remove('submitting', 'selected', 'dimmed');
+            });
+            disableAllOptionButtons();
+            stopGameplayTimer();
+            setTimerDisplay(0);
+            $s('s4-timer').classList.add('locked');
+            setStatus(msg, 'locked');
+            gp.state = 'locked';
+            return;
+        }
+        // Accepted. Persist submission so reload/reconnect mid-question
+        // remembers our pick when applying the snapshot.
+        const session = readSession();
+        if (session) {
+            session.last_submission = { question_id: gp.questionId, selected_option: letter };
+            writeSession(session);
+        }
+        document.querySelectorAll('#s4-options .gp-opt').forEach(el => {
+            el.classList.remove('submitting');
+        });
+        setStatus('Answer locked in.', 'submitted');
+        gp.state = 'submitted';
+        // Note: ack.is_correct intentionally NOT used here — we wait for
+        // the question:revealed broadcast so the player's reveal moment
+        // is synchronized with the projector and other tablets.
+    });
+}
+
+// Wires inbound /player broadcasts that drive Screen 4. Idempotent —
+// safe to call once per socket connect.
+function wireGameplayListeners(socket, eventData) {
+    // [TEMP Phase 6 diagnostic — remove once stuck-state bug resolved]
+    // Catches every inbound event from the server. If question:show is
+    // missing here while the host/display advance, the socket is dead
+    // or out of the event room. If it appears here, the listener body
+    // (below) didn't run for some reason.
+    socket.onAny((evt, payload) => console.log('[gp recv]', evt, payload));
+    socket.on('disconnect', (reason) => console.log('[gp socket disconnect]', reason));
+    socket.on('connect_error', (err) => console.log('[gp socket connect_error]', err && err.message));
+
+    socket.on('question:show', (p) => {
+        console.log('[gp] question:show listener fired, gp.state was', gp.state);
+        renderQuestionShow(p, eventData);
+    });
+    socket.on('question:locked', () => {
+        console.log('[gp] question:locked listener fired, gp.state was', gp.state);
+        renderQuestionLocked();
+    });
+    socket.on('question:revealed', (p) => {
+        console.log('[gp] question:revealed listener fired, gp.state was', gp.state, 'correct=', p && p.correct_option);
+        renderQuestionRevealed(p.correct_option);
+    });
+    socket.on('game:ended', () => {
+        console.log('[gp] game:ended listener fired');
+        localStorage.removeItem(STORAGE_KEY);
+        try { socket.disconnect(); } catch (_) {}
+        state.socket = null;
+        stopGameplayTimer();
+        showScreen(1);
+    });
+}
+
+// Apply a /api/display/:event_id/snapshot response onto Screen 4.
+// Used on rejoin to recover state for late-joining players.
+function applyGameplaySnapshot(snap) {
+    if (!snap || !snap.current_question) {
+        // No current question — nothing to render gameplay-wise. Caller
+        // typically already routed to lobby in this case.
+        return;
+    }
+    const q = snap.current_question;
+    // Did WE submit for this question?
+    const session = readSession();
+    const lastSub = session && session.last_submission;
+    const ourPick = (lastSub && lastSub.question_id === q.question_id) ? lastSub.selected_option : null;
+
+    if (q.state === 'active') {
+        // Render as if we just got a question:show. Server-authoritative
+        // started_at gives us the right remaining time.
+        renderQuestionShow(q);
+        if (ourPick) {
+            // We already submitted before reload. Reflect that.
+            gp.selectedOption = ourPick;
+            gp.state = 'submitted';
+            disableAllOptionButtons();
+            document.querySelectorAll('#s4-options .gp-opt').forEach(el => {
+                if (el.dataset.letter === ourPick) el.classList.add('selected');
+                else el.classList.add('dimmed');
+            });
+            setStatus('Answer locked in.', 'submitted');
+        }
+    } else if (q.state === 'locked') {
+        // Render question, mark locked, restore our pick if any.
+        renderQuestionShow(q);
+        if (ourPick) gp.selectedOption = ourPick;
+        renderQuestionLocked();
+        if (ourPick) {
+            document.querySelectorAll('#s4-options .gp-opt').forEach(el => {
+                if (el.dataset.letter === ourPick) el.classList.add('selected');
+                else el.classList.add('dimmed');
+            });
+        }
+    } else if (q.state === 'revealed') {
+        if (ourPick) {
+            // Same as a normal reveal flow: render question, set our pick,
+            // then call renderQuestionRevealed for green/red.
+            renderQuestionShow(q);
+            gp.selectedOption = ourPick;
+            renderQuestionRevealed(snap.correct_option);
+        } else {
+            // Late-join, no submission record. Catching up.
+            renderCatchingUp(q, snap.correct_option);
+        }
+    }
+}
+
+// =============================================================
+//  Rejoin flow (on page load)
+//  1. Check localStorage. If absent, Screen 1.
+//  2. Verify event still published/live via /api/join/:code. If 404
+//     (includes completed/cancelled), silent clear + Screen 1.
+//  3. Connect to /player with session_token in handshake auth.
+//     - connect_error → silent clear + Screen 1
+//     - connect → emit team:rejoin, inspect ack
+//       - ack.error → silent clear + Screen 1
+//       - ack.status === 'ended' → silent clear + Screen 1
+//       - otherwise → Screen 3 (lobby) or Screen 4 (gameplay) based on state
+// =============================================================
+async function tryRejoin() {
+    let stored;
+    try { stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }
+    catch (_) { stored = null; }
+    if (!stored || !stored.session_token || !stored.code) return false;
+
+    // Step 1: confirm event still joinable via public lookup
+    try {
+        const res = await fetch('/api/join/' + stored.code);
+        if (!res.ok) {
+            localStorage.removeItem(STORAGE_KEY);
+            return false;
+        }
+        state.event = await res.json();
+        state.code = stored.code;
+    } catch (_) {
+        // Network error — don't clear, let user retry by reloading
+        return false;
+    }
+
+    // Step 2: attach a socket using the stored session_token in handshake auth
+    return new Promise((resolve) => {
+        const socket = io('/player', {
+            auth: { session_token: stored.session_token },
+            transports: ['websocket'],
+            reconnection: false,
+        });
+        state.socket = socket;
+
+        let done = false;
+        const finishFail = () => {
+            if (done) return; done = true;
+            localStorage.removeItem(STORAGE_KEY);
+            try { socket.disconnect(); } catch(_) {}
+            state.socket = null;
+            resolve(false);
+        };
+
+        socket.on('connect_error', finishFail);
+
+        socket.on('connect', () => {
+            socket.emit('team:rejoin', {}, (ack) => {
+                if (done) return;
+                if (!ack || ack.error || ack.status === 'ended') { finishFail(); return; }
+                done = true;
+                // Decide screen based on event_state status
+                if (ack.status === 'lobby' || ack.status === 'intermission') {
+                    mountLobbyWithSocket(socket, stored, state.event);
+                } else {
+                    // question_active / question_locked / question_revealed
+                    document.getElementById('s4-event-title').textContent = state.event.title;
+                    wireGameplayListeners(socket, state.event);
+                    state.socket = socket;
+                    showScreen(4);
+                    syncLifelineButtonFromStorage();
+                    // Phase 6: rehydrate current question state from the
+                    // public display snapshot (closes the broadcast-only
+                    // race for late-joining players).
+                    fetch(`/api/display/${state.event.event_id}/snapshot`, { cache: 'no-store' })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(snap => { if (snap) applyGameplaySnapshot(snap); })
+                        .catch(err => console.warn('gameplay snapshot fetch failed:', err));
+                }
+                resolve(true);
+            });
+        });
+    });
+}
+
+// =============================================================
+//  Boot
+// =============================================================
+(async function boot() {
+    // URL prefill: /join.html?code=XXX-XXX
+    const urlCode = new URL(location.href).searchParams.get('code');
+    if (urlCode) {
+        codeInput.value = formatCode(urlCode);
+        findBtn.disabled = rawCode().length !== 6;
+    }
+    const rejoined = await tryRejoin();
+    if (!rejoined) showScreen(1);
+})();
+</script>
+<script>document.querySelectorAll('.js-host').forEach(function (el) { el.textContent = location.host + (el.dataset.path || ''); });</script>
+</body>
+</html>

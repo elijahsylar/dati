@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>D.A.T.I. — Gameplay Demo</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --navy: #0F1B2D;
+            --navy-mid: #1A2D4A;
+            --navy-light: #243B5E;
+            --gold: #D4A843;
+            --gold-glow: #F0C85A;
+            --green: #2ECC71;
+            --red: #E74C3C;
+            --white: #FFFFFF;
+            --text-muted: #8899AA;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--navy);
+            color: var(--white);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ---- LOBBY ---- */
+        .screen { display: none; min-height: 100vh; }
+        .screen.active { display: flex; flex-direction: column; }
+
+        .lobby {
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 24px;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+        }
+        .lobby-logo {
+            font-size: 56px;
+            font-weight: 900;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-glow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .lobby-sub {
+            font-size: 14px;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 48px;
+        }
+        .lobby-theme {
+            background: var(--navy-light);
+            border: 1px solid rgba(212,168,67,0.2);
+            border-radius: 16px;
+            padding: 28px 36px;
+            margin-bottom: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+        .lobby-theme .label {
+            font-size: 12px;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+        .lobby-theme .theme-name {
+            font-size: 28px;
+            font-weight: 800;
+        }
+        .lobby-theme .theme-meta {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+        .lobby-teams {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 40px;
+            max-width: 600px;
+        }
+        .team-chip {
+            background: var(--navy-light);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .team-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+        }
+        .btn-start {
+            background: linear-gradient(135deg, var(--gold), var(--gold-glow));
+            color: var(--navy);
+            border: none;
+            padding: 18px 60px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 800;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 4px 20px rgba(212,168,67,0.3);
+        }
+        .btn-start:hover { transform: scale(1.03); box-shadow: 0 6px 30px rgba(212,168,67,0.5); }
+        .btn-start:active { transform: scale(0.98); }
+
+        /* ---- GAME SCREEN ---- */
+        .game {
+            background: linear-gradient(180deg, var(--navy) 0%, var(--navy-mid) 100%);
+        }
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .game-header .q-count {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .game-header .q-count span { color: var(--gold); }
+        .game-header .score-display {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        /* Timer */
+        .timer-bar-wrap {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.08);
+        }
+        .timer-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gold), var(--gold-glow));
+            transition: width 1s linear;
+            border-radius: 0 3px 3px 0;
+        }
+        .timer-bar.warning { background: linear-gradient(90deg, #E67E22, #E74C3C); }
+        .timer-bar.danger { background: var(--red); }
+
+        /* Question area */
+        .question-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .timer-number {
+            font-size: 48px;
+            font-weight: 900;
+            color: var(--gold);
+            margin-bottom: 16px;
+            transition: color 0.3s;
+            min-height: 60px;
+        }
+        .timer-number.warning { color: #E67E22; }
+        .timer-number.danger { color: var(--red); animation: pulse 0.5s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .difficulty-badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+        .diff-easy { background: rgba(46,204,113,0.15); color: var(--green); }
+        .diff-medium { background: rgba(241,196,15,0.15); color: #F1C40F; }
+        .diff-hard { background: rgba(231,76,60,0.15); color: var(--red); }
+
+        .question-text {
+            font-size: 26px;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.4;
+            margin-bottom: 40px;
+            max-width: 650px;
+        }
+
+        /* Answer grid */
+        .answers {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            width: 100%;
+            max-width: 650px;
+        }
+        .answer-btn {
+            background: var(--navy-light);
+            border: 2px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 22px 20px;
+            color: var(--white);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .answer-btn:hover { border-color: var(--gold); background: rgba(212,168,67,0.08); }
+        .answer-btn:active { transform: scale(0.97); }
+        .answer-btn .letter {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 15px;
+            flex-shrink: 0;
+            color: var(--text-muted);
+        }
+        .answer-btn.selected { border-color: var(--gold); background: rgba(212,168,67,0.12); }
+        .answer-btn.selected .letter { background: var(--gold); color: var(--navy); }
+        .answer-btn.correct { border-color: var(--green); background: rgba(46,204,113,0.12); }
+        .answer-btn.correct .letter { background: var(--green); color: var(--navy); }
+        .answer-btn.wrong { border-color: var(--red); background: rgba(231,76,60,0.12); }
+        .answer-btn.wrong .letter { background: var(--red); color: white; }
+        .answer-btn.disabled { pointer-events: none; opacity: 0.5; }
+        .answer-btn.disabled.correct { opacity: 1; }
+
+        /* Result flash */
+        .result-flash {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 80px;
+            font-weight: 900;
+            z-index: 50;
+            pointer-events: none;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+            opacity: 0;
+        }
+        .result-flash.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        .result-flash.correct-flash { color: var(--green); text-shadow: 0 0 40px rgba(46,204,113,0.5); }
+        .result-flash.wrong-flash { color: var(--red); text-shadow: 0 0 40px rgba(231,76,60,0.5); }
+
+        /* ---- SCOREBOARD ---- */
+        .scoreboard {
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px 24px;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+        }
+        .scoreboard-title {
+            font-size: 16px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 12px;
+        }
+        .final-score {
+            font-size: 72px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--gold), var(--gold-glow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .score-subtitle {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 48px;
+        }
+        .leaderboard {
+            max-width: 500px;
+            width: 100%;
+            margin-bottom: 40px;
+        }
+        .leaderboard-row {
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            background: var(--navy-light);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .leaderboard-row.first { border-color: var(--gold); background: rgba(212,168,67,0.08); }
+        .leaderboard-rank {
+            width: 32px;
+            font-weight: 800;
+            font-size: 18px;
+            color: var(--text-muted);
+        }
+        .leaderboard-row.first .leaderboard-rank { color: var(--gold); }
+        .leaderboard-name { flex: 1; font-weight: 600; font-size: 16px; text-align: left; }
+        .leaderboard-score { font-weight: 800; font-size: 18px; color: var(--gold); }
+        .leaderboard-row:not(.first) .leaderboard-score { color: var(--text-muted); }
+
+        .btn-replay {
+            background: transparent;
+            border: 2px solid var(--gold);
+            color: var(--gold);
+            padding: 14px 48px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-replay:hover { background: var(--gold); color: var(--navy); }
+
+        /* ---- TRANSITIONS ---- */
+        .fade-in { animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 600px) {
+            .lobby-logo { font-size: 40px; }
+            .question-text { font-size: 20px; }
+            .answers { grid-template-columns: 1fr; }
+            .timer-number { font-size: 36px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============================== LOBBY ============================== -->
+<div id="screen-lobby" class="screen lobby active">
+    <div class="lobby-logo">D.A.T.I.</div>
+    <div class="lobby-sub">Don't Ask The Internet</div>
+
+    <div class="lobby-theme">
+        <div class="label">Tonight's Theme</div>
+        <div class="theme-name">2000s Nostalgia</div>
+        <div class="theme-meta">15 Questions · 30 sec each · Pub Trivia</div>
+    </div>
+
+    <div class="lobby-teams">
+        <div class="team-chip"><div class="team-dot"></div> Brain Busters</div>
+        <div class="team-chip"><div class="team-dot"></div> Quiz Khalifa</div>
+        <div class="team-chip"><div class="team-dot"></div> The Quizzly Bears</div>
+        <div class="team-chip"><div class="team-dot"></div> Trivial Pursuit</div>
+        <div class="team-chip"><div class="team-dot"></div> Beer & Smarts</div>
+        <div class="team-chip"><div class="team-dot" style="background:#E67E22"></div> <em style="color:var(--text-muted)">Waiting for more...</em></div>
+    </div>
+
+    <button class="btn-start" onclick="startGame()">START GAME</button>
+</div>
+
+<!-- ============================== GAME ============================== -->
+<div id="screen-game" class="screen game">
+    <div class="game-header">
+        <div class="q-count">Question <span id="q-num">1</span> / <span id="q-total">10</span></div>
+        <div class="score-display">⭐ <span id="live-score">0</span> pts</div>
+    </div>
+    <div class="timer-bar-wrap">
+        <div class="timer-bar" id="timer-bar"></div>
+    </div>
+    <div class="question-area fade-in" id="question-area">
+        <div class="timer-number" id="timer-number">30</div>
+        <div class="difficulty-badge diff-medium" id="diff-badge">Medium</div>
+        <div class="question-text" id="question-text"></div>
+        <div class="answers" id="answers"></div>
+    </div>
+</div>
+
+<!-- ============================== SCOREBOARD ============================== -->
+<div id="screen-score" class="screen scoreboard">
+    <div class="scoreboard-title">Final Score</div>
+    <div class="final-score" id="final-score">0</div>
+    <div class="score-subtitle" id="score-subtitle">out of 100 points</div>
+
+    <div class="leaderboard" id="leaderboard"></div>
+
+    <button class="btn-replay" onclick="resetGame()">PLAY AGAIN</button>
+</div>
+
+<!-- Result flash -->
+<div class="result-flash" id="result-flash"></div>
+
+<script>
+    const QUESTIONS = [
+        {
+            q: "What social media platform launched in 2004?",
+            a: ["Twitter", "MySpace", "Facebook", "Instagram"],
+            correct: 2, difficulty: "easy"
+        },
+        {
+            q: "Which phone was released by Apple in 2007?",
+            a: ["iPod Touch", "iPhone", "iPad", "Blackberry"],
+            correct: 1, difficulty: "easy"
+        },
+        {
+            q: "What was the name of the virtual world game popular in the early 2000s?",
+            a: ["Minecraft", "Second Life", "Club Penguin", "Roblox"],
+            correct: 2, difficulty: "medium"
+        },
+        {
+            q: "Which TV show featured characters on a mysterious island?",
+            a: ["Survivor", "Lost", "The OC", "Heroes"],
+            correct: 1, difficulty: "easy"
+        },
+        {
+            q: "What dance move became viral from 'Crank That'?",
+            a: ["The Dougie", "Superman", "The Stanky Leg", "The Running Man"],
+            correct: 1, difficulty: "medium"
+        },
+        {
+            q: "What portable music player dominated the 2000s?",
+            a: ["Zune", "Walkman", "iPod", "MiniDisc"],
+            correct: 2, difficulty: "easy"
+        },
+        {
+            q: "What flip phone was the best-selling phone of 2004?",
+            a: ["Nokia 3310", "Motorola Razr", "Samsung SGH", "LG Chocolate"],
+            correct: 1, difficulty: "medium"
+        },
+        {
+            q: "Which animated movie featured a clownfish searching for his son?",
+            a: ["Shark Tale", "Finding Nemo", "Little Mermaid 2", "SpongeBob Movie"],
+            correct: 1, difficulty: "easy"
+        },
+        {
+            q: "Which gaming console did Nintendo release in 2006?",
+            a: ["GameCube", "Nintendo DS", "Wii", "Switch"],
+            correct: 2, difficulty: "easy"
+        },
+        {
+            q: "What was the popular IM client with a running man logo?",
+            a: ["MSN Messenger", "Yahoo Messenger", "AIM", "ICQ"],
+            correct: 2, difficulty: "medium"
+        }
+    ];
+
+    const LETTERS = ['A', 'B', 'C', 'D'];
+    const TIME_LIMIT = 30;
+    let currentQ = 0;
+    let score = 0;
+    let timer = null;
+    let timeLeft = TIME_LIMIT;
+    let answered = false;
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function startGame() {
+        currentQ = 0;
+        score = 0;
+        document.getElementById('live-score').textContent = '0';
+        document.getElementById('q-total').textContent = QUESTIONS.length;
+        showScreen('screen-game');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        answered = false;
+        const q = QUESTIONS[currentQ];
+        document.getElementById('q-num').textContent = currentQ + 1;
+        document.getElementById('question-text').textContent = q.q;
+
+        const badge = document.getElementById('diff-badge');
+        badge.textContent = q.difficulty.charAt(0).toUpperCase() + q.difficulty.slice(1);
+        badge.className = `difficulty-badge diff-${q.difficulty}`;
+
+        const answersEl = document.getElementById('answers');
+        answersEl.innerHTML = q.a.map((a, i) => `
+            <button class="answer-btn" onclick="selectAnswer(${i})">
+                <span class="letter">${LETTERS[i]}</span>
+                <span>${a}</span>
+            </button>
+        `).join('');
+
+        // Animate in
+        const area = document.getElementById('question-area');
+        area.classList.remove('fade-in');
+        void area.offsetWidth;
+        area.classList.add('fade-in');
+
+        // Start timer
+        timeLeft = TIME_LIMIT;
+        updateTimer();
+        clearInterval(timer);
+        timer = setInterval(() => {
+            timeLeft--;
+            updateTimer();
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                timeUp();
+            }
+        }, 1000);
+    }
+
+    function updateTimer() {
+        const pct = (timeLeft / TIME_LIMIT) * 100;
+        const bar = document.getElementById('timer-bar');
+        const num = document.getElementById('timer-number');
+
+        bar.style.width = pct + '%';
+        num.textContent = timeLeft;
+
+        bar.classList.remove('warning', 'danger');
+        num.classList.remove('warning', 'danger');
+
+        if (timeLeft <= 5) {
+            bar.classList.add('danger');
+            num.classList.add('danger');
+        } else if (timeLeft <= 10) {
+            bar.classList.add('warning');
+            num.classList.add('warning');
+        }
+    }
+
+    function selectAnswer(idx) {
+        if (answered) return;
+        answered = true;
+        clearInterval(timer);
+
+        const q = QUESTIONS[currentQ];
+        const btns = document.querySelectorAll('.answer-btn');
+        const flash = document.getElementById('result-flash');
+
+        btns.forEach((btn, i) => {
+            if (i === q.correct) {
+                btn.classList.add('correct');
+            } else {
+                btn.classList.add('disabled');
+            }
+            if (i === idx && i !== q.correct) {
+                btn.classList.add('wrong');
+            }
+        });
+
+        if (idx === q.correct) {
+            const points = timeLeft >= 20 ? 10 : timeLeft >= 10 ? 7 : 5;
+            score += points;
+            document.getElementById('live-score').textContent = score;
+            flash.textContent = `+${points}`;
+            flash.className = 'result-flash correct-flash show';
+        } else {
+            flash.textContent = '✗';
+            flash.className = 'result-flash wrong-flash show';
+        }
+
+        setTimeout(() => { flash.className = 'result-flash'; }, 800);
+        setTimeout(nextQuestion, 1800);
+    }
+
+    function timeUp() {
+        if (answered) return;
+        answered = true;
+        const q = QUESTIONS[currentQ];
+        const btns = document.querySelectorAll('.answer-btn');
+        btns.forEach((btn, i) => {
+            if (i === q.correct) btn.classList.add('correct');
+            else btn.classList.add('disabled');
+        });
+
+        const flash = document.getElementById('result-flash');
+        flash.textContent = "TIME'S UP";
+        flash.className = 'result-flash wrong-flash show';
+        setTimeout(() => { flash.className = 'result-flash'; }, 800);
+        setTimeout(nextQuestion, 1800);
+    }
+
+    function nextQuestion() {
+        currentQ++;
+        if (currentQ >= QUESTIONS.length) {
+            showScoreboard();
+        } else {
+            loadQuestion();
+        }
+    }
+
+    function showScoreboard() {
+        showScreen('screen-score');
+        const maxScore = QUESTIONS.length * 10;
+        document.getElementById('final-score').textContent = score;
+        document.getElementById('score-subtitle').textContent = `out of ${maxScore} points`;
+
+        // Fake leaderboard with your team placed
+        const teams = [
+            { name: 'Your Team', score: score },
+            { name: 'Brain Busters', score: Math.floor(Math.random() * 30) + 50 },
+            { name: 'Quiz Khalifa', score: Math.floor(Math.random() * 30) + 40 },
+            { name: 'The Quizzly Bears', score: Math.floor(Math.random() * 30) + 35 },
+            { name: 'Beer & Smarts', score: Math.floor(Math.random() * 30) + 30 }
+        ].sort((a, b) => b.score - a.score);
+
+        document.getElementById('leaderboard').innerHTML = teams.map((t, i) => `
+            <div class="leaderboard-row ${i === 0 ? 'first' : ''} ${t.name === 'Your Team' ? '' : ''}">
+                <div class="leaderboard-rank">${i + 1}</div>
+                <div class="leaderboard-name">${t.name === 'Your Team' ? '⭐ ' + t.name : t.name}</div>
+                <div class="leaderboard-score">${t.score}</div>
+            </div>
+        `).join('');
+    }
+
+    function resetGame() {
+        showScreen('screen-lobby');
+    }
+</script>
+</body>
+</html>

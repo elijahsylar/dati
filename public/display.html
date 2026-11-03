@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D.A.T.I. Display</title>
+    <style>
+        :root {
+            --bg:        #0A0E1A;
+            --panel:     #131A2C;
+            --panel-2:   #1E3C6E;
+            --gold:      #D4A843;
+            --text:      #FFFFFF;
+            --muted:     rgba(255,255,255,0.65);
+            --dim:       rgba(255,255,255,0.30);
+            --success:   #2D8544;
+            --danger:    #C0392B;
+            --serif:     Georgia, "Times New Roman", Times, serif;
+            --sans:      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #display-root {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ---- Header strip ---- */
+        #header {
+            flex: 0 0 auto;
+            min-height: 56px;
+            padding: 10px 24px;
+            background: var(--panel);
+            border-bottom: 2px solid var(--panel-2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+        }
+        .header-left, .header-right {
+            display: flex; align-items: center; gap: 18px;
+            min-width: 0;
+        }
+        .header-center { flex: 1; text-align: center; min-width: 0; }
+        .brand {
+            font-weight: 800;
+            letter-spacing: 4px;
+            color: var(--text);
+            font-size: 22px;
+        }
+        .brand-accent { color: var(--gold); }
+        .event-title {
+            font-size: 20px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .qnum {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--text);
+            font-variant-numeric: tabular-nums;
+        }
+        .state-pill {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: var(--panel-2);
+            color: var(--gold);
+        }
+        .state-pill.lobby    { background: var(--panel-2); color: var(--gold); }
+        .state-pill.live     { background: var(--success); color: white; }
+        .state-pill.locked   { background: var(--danger);  color: white; }
+        .state-pill.revealed { background: var(--gold);    color: var(--bg); }
+        .state-pill.intermission { background: #555; color: white; }
+        .state-pill.ended    { background: var(--gold); color: var(--bg); }
+        .conn-pill {
+            font-size: 13px;
+            color: var(--danger);
+            background: rgba(192,57,43,0.15);
+            padding: 6px 12px;
+            border-radius: 999px;
+        }
+        .fs-btn {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--dim);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 18px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .fs-btn:hover { color: var(--text); border-color: var(--text); }
+
+        /* ---- Main: stage + sidebar ---- */
+        #main {
+            flex: 1 1 auto;
+            display: flex;
+            min-height: 0;
+        }
+        #stage {
+            flex: 1 1 75%;
+            position: relative;
+            padding: 30px 36px;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        #sidebar {
+            flex: 0 0 25%;
+            min-width: 280px;
+            background: var(--panel);
+            border-left: 2px solid var(--panel-2);
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        #sidebar h2 {
+            margin: 0 0 14px;
+            font-size: 16px;
+            letter-spacing: 3px;
+            color: var(--gold);
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+        #leaderboard {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+            flex: 1 1 auto;
+        }
+        #leaderboard li {
+            display: grid;
+            grid-template-columns: 36px 1fr auto;
+            gap: 10px;
+            align-items: baseline;
+            padding: 10px 4px;
+            border-bottom: 1px solid var(--panel-2);
+            font-size: 18px;
+        }
+        #leaderboard li:last-child { border-bottom: none; }
+        .lb-rank {
+            color: var(--muted);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        #leaderboard li:first-child .lb-rank,
+        #leaderboard li:first-child .lb-points { color: var(--gold); }
+        .lb-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .lb-points {
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            color: var(--text);
+        }
+        .lb-empty { color: var(--muted); font-size: 14px; padding: 12px 4px; font-style: italic; }
+
+        /* ---- Stage views (mutually exclusive) ---- */
+        .view { display: none; flex: 1 1 auto; min-height: 0; }
+        .view.active { display: flex; }
+
+        /* Lobby view */
+        #lobby-view {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .lobby-prompt {
+            font-size: 28px;
+            letter-spacing: 6px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .lobby-url {
+            font-family: var(--serif);
+            font-size: 56px;
+            color: var(--text);
+            margin-bottom: 50px;
+            word-break: break-all;
+            line-height: 1.1;
+        }
+        .lobby-code-label {
+            font-size: 22px;
+            letter-spacing: 8px;
+            color: var(--gold);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .lobby-code {
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            font-weight: 800;
+            font-size: 14vw;
+            letter-spacing: 2vw;
+            color: var(--gold);
+            line-height: 1;
+        }
+        .lobby-sub {
+            margin-top: 40px;
+            font-size: 22px;
+            color: var(--muted);
+            font-style: italic;
+        }
+
+        /* Question view */
+        #question-view {
+            flex-direction: column;
+            position: relative;
+        }
+        .qtext {
+            font-family: var(--serif);
+            font-size: clamp(36px, 4.6vw, 80px);
+            line-height: 1.15;
+            color: var(--text);
+            text-align: center;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            flex: 0 0 auto;
+        }
+        .opts {
+            flex: 1 1 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 16px;
+            min-height: 0;
+        }
+        .opt {
+            background: var(--panel);
+            border: 2px solid var(--panel-2);
+            border-radius: 14px;
+            padding: 16px 22px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            min-height: 0;
+            transition: opacity 0.4s, background 0.4s, border-color 0.4s;
+        }
+        .opt-letter {
+            flex: 0 0 auto;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--panel-2);
+            color: var(--gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 28px;
+        }
+        .opt-body {
+            font-family: var(--serif);
+            font-size: clamp(20px, 2.2vw, 36px);
+            line-height: 1.2;
+            color: var(--text);
+            min-width: 0;
+            flex: 1;
+        }
+        .opt.correct {
+            background: var(--success);
+            border-color: var(--success);
+        }
+        .opt.correct .opt-letter {
+            background: white;
+            color: var(--success);
+        }
+        .opt.dimmed { opacity: 0.35; }
+
+        /* Timer circle */
+        .timer-circle {
+            position: absolute;
+            right: 36px;
+            top: 0;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: var(--panel-2);
+            border: 4px solid var(--gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            font-size: 56px;
+            color: var(--gold);
+            box-shadow: 0 0 24px rgba(212,168,67,0.30);
+        }
+        .timer-circle.warn { border-color: var(--danger); color: var(--danger); }
+        .timer-circle.locked { background: var(--danger); color: white; border-color: var(--danger); }
+
+        .locked-overlay {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--danger);
+            color: white;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            padding: 8px 22px;
+            border-radius: 999px;
+            font-size: 16px;
+        }
+        .reveal-caption {
+            text-align: center;
+            margin-top: 16px;
+            color: var(--gold);
+            font-size: 18px;
+            font-style: italic;
+            letter-spacing: 1px;
+        }
+
+        /* Intermission + Ended views */
+        #intermission-view, #ended-view, #no-event-view {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .big-msg {
+            font-family: var(--serif);
+            font-size: clamp(48px, 6vw, 96px);
+            color: var(--gold);
+            margin-bottom: 18px;
+            line-height: 1.1;
+        }
+        .sub-msg {
+            font-size: 22px;
+            color: var(--muted);
+        }
+        .podium {
+            list-style: none;
+            margin: 30px 0 0;
+            padding: 0;
+            font-size: 28px;
+            text-align: left;
+            min-width: 50%;
+        }
+        .podium li {
+            display: grid;
+            grid-template-columns: 60px 1fr auto;
+            align-items: baseline;
+            padding: 10px 16px;
+            margin-bottom: 6px;
+            background: var(--panel);
+            border-radius: 10px;
+        }
+        .podium li:first-child {
+            background: var(--gold);
+            color: var(--bg);
+            font-size: 36px;
+            padding: 14px 20px;
+        }
+        .podium .pd-rank { font-weight: 800; font-variant-numeric: tabular-nums; }
+        .podium .pd-points { font-weight: 800; font-variant-numeric: tabular-nums; }
+        .thanks {
+            margin-top: 30px;
+            font-size: 22px;
+            color: var(--muted);
+            font-style: italic;
+        }
+
+        /* Lifeline ticker */
+        #ticker {
+            flex: 0 0 auto;
+            min-height: 40px;
+            background: var(--panel-2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 24px;
+            font-size: 16px;
+            letter-spacing: 1px;
+        }
+        #ticker-text {
+            opacity: 0;
+            transition: opacity 0.4s;
+            text-align: center;
+        }
+        #ticker-text.show { opacity: 1; }
+        #ticker-text.flash { animation: ticker-flash 0.6s ease-out; }
+        @keyframes ticker-flash {
+            0%   { background: var(--gold); color: var(--bg); }
+            100% { background: transparent; color: white; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="display-root">
+    <header id="header">
+        <div class="header-left">
+            <span class="brand">D.A.T.I<span class="brand-accent">.</span></span>
+            <span class="event-title" id="event-title">Loading...</span>
+        </div>
+        <div class="header-center">
+            <span class="qnum" id="qnum"></span>
+        </div>
+        <div class="header-right">
+            <span class="state-pill" id="state-pill">...</span>
+            <span class="conn-pill" id="conn-pill" hidden>Reconnecting...</span>
+            <button class="fs-btn" id="fs-btn" onclick="toggleFullscreen()" title="Toggle fullscreen" aria-label="Toggle fullscreen">&#x2922;</button>
+        </div>
+    </header>
+
+    <main id="main">
+        <section id="stage">
+            <div id="lobby-view" class="view">
+                <div class="lobby-prompt">JOIN AT</div>
+                <div class="lobby-url js-host" data-path="/join.html">/join.html</div>
+                <div class="lobby-code-label">CODE</div>
+                <div class="lobby-code" id="lobby-code">.....</div>
+                <div class="lobby-sub" id="lobby-sub">Waiting for players</div>
+            </div>
+
+            <div id="question-view" class="view">
+                <div class="qtext" id="qtext"></div>
+                <div class="opts">
+                    <div class="opt" data-letter="A"><div class="opt-letter">A</div><div class="opt-body" id="opt-A"></div></div>
+                    <div class="opt" data-letter="B"><div class="opt-letter">B</div><div class="opt-body" id="opt-B"></div></div>
+                    <div class="opt" data-letter="C"><div class="opt-letter">C</div><div class="opt-body" id="opt-C"></div></div>
+                    <div class="opt" data-letter="D"><div class="opt-letter">D</div><div class="opt-body" id="opt-D"></div></div>
+                </div>
+                <div class="timer-circle" id="timer"><span id="timer-num">.</span></div>
+                <div class="locked-overlay" id="locked-overlay" hidden>Time is up</div>
+                <div class="reveal-caption" id="reveal-caption" hidden>Next question coming up</div>
+            </div>
+
+            <div id="intermission-view" class="view">
+                <div class="big-msg">Round Break</div>
+                <div class="sub-msg">Stretch your legs</div>
+            </div>
+
+            <div id="ended-view" class="view">
+                <div class="big-msg">Final Scores</div>
+                <ol class="podium" id="podium"></ol>
+                <div class="thanks">Thanks for playing.</div>
+            </div>
+
+            <div id="no-event-view" class="view">
+                <div class="big-msg">No event selected</div>
+                <div class="sub-msg">Open with /display.html?event=&lt;event_id&gt;</div>
+            </div>
+
+            <div id="error-view" class="view">
+                <div class="big-msg" id="error-msg">Event not found</div>
+                <div class="sub-msg" id="error-sub">Check the event ID in the URL.</div>
+            </div>
+        </section>
+
+        <aside id="sidebar">
+            <h2>Leaderboard</h2>
+            <ol id="leaderboard"><li class="lb-empty">No teams yet</li></ol>
+        </aside>
+    </main>
+
+    <footer id="ticker">
+        <span id="ticker-text"></span>
+    </footer>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// =============================================================
+//  Phase 4: TV / Projector Display
+//
+//  This page is view-only. It connects to the /display socket
+//  namespace, subscribes to a single event, and renders state
+//  changes in real time. On load and on every socket reconnect,
+//  it fetches /api/display/:event_id/snapshot to recover state
+//  (closes the join-mid-event race the socket-only contract
+//  doesn't cover).
+//
+//  No user input. No auth. Visible to a room.
+// =============================================================
+
+// ---------- URL param ----------
+const urlParams = new URL(location.href).searchParams;
+const EVENT_ID  = parseInt(urlParams.get('event'), 10);
+
+// ---------- State ----------
+const state = {
+    event:    null,   // { id, title, status, join_code }
+    question: null,   // current question payload, or null
+    scores:   [],
+    paused:   false,
+    socket:   null,
+    timerId:  null,
+    timerEnd: null,   // epoch ms when timer hits 0
+    tickerHideTimer: null,
+};
+
+// ---------- Helpers ----------
+function $(id) { return document.getElementById(id); }
+function escHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+}
+function formatJoinCode(code) {
+    if (!code) return '.....';
+    const c = String(code).toUpperCase();
+    if (c.length === 6) return c.slice(0, 3) + '-' + c.slice(3);
+    return c;
+}
+
+// ---------- View routing ----------
+const VIEWS = ['lobby-view', 'question-view', 'intermission-view', 'ended-view', 'no-event-view', 'error-view'];
+function showView(name) {
+    VIEWS.forEach(v => $(v).classList.toggle('active', v === name));
+}
+
+function setStatePill(label, cls) {
+    const el = $('state-pill');
+    el.textContent = label;
+    el.className = 'state-pill ' + cls;
+}
+
+// ---------- Renderers ----------
+function renderEventHeader() {
+    $('event-title').textContent = state.event ? state.event.title : '';
+}
+
+function renderLobby() {
+    $('lobby-code').textContent = formatJoinCode(state.event && state.event.join_code);
+    $('lobby-sub').textContent = state.scores.length > 0
+        ? `${state.scores.length} team${state.scores.length === 1 ? '' : 's'} joined`
+        : 'Waiting for players';
+    showView('lobby-view');
+    setStatePill('LOBBY', 'lobby');
+    $('qnum').textContent = '';
+    stopTimer();
+}
+
+function renderQuestion(q) {
+    $('qtext').textContent = q.question_text || '';
+    ['A','B','C','D'].forEach(letter => {
+        $('opt-' + letter).textContent = (q.options && q.options[letter]) || '';
+    });
+    document.querySelectorAll('#question-view .opt').forEach(el => {
+        el.classList.remove('correct', 'dimmed');
+    });
+    $('locked-overlay').hidden  = true;
+    $('reveal-caption').hidden  = true;
+    $('qnum').textContent = `Question ${q.question_number} of ${q.total_questions}`;
+    showView('question-view');
+
+    // Compute timer end: if started_at provided (snapshot), respect it;
+    // else assume "just now" (live broadcast arrives ~immediately).
+    const startMs = q.started_at ? new Date(q.started_at).getTime() : Date.now();
+    const endMs   = startMs + (q.time_limit_seconds * 1000);
+    if (q.state === 'active') {
+        startTimer(endMs);
+        setStatePill('LIVE', 'live');
+    } else if (q.state === 'locked') {
+        showLocked();
+    } else if (q.state === 'revealed') {
+        // Snapshot path: locked + revealed both true. Show reveal directly.
+        showLocked();
+        if (state.correct_option) markRevealed(state.correct_option);
+    }
+}
+
+function showLocked() {
+    stopTimer();
+    $('timer').classList.add('locked');
+    $('locked-overlay').hidden = false;
+    setStatePill('LOCKED', 'locked');
+}
+
+function markRevealed(correctLetter) {
+    document.querySelectorAll('#question-view .opt').forEach(el => {
+        if (el.dataset.letter === correctLetter) el.classList.add('correct');
+        else el.classList.add('dimmed');
+    });
+    $('reveal-caption').hidden = false;
+    setStatePill('REVEALED', 'revealed');
+}
+
+function renderLeaderboard(top = 5) {
+    const ol = $('leaderboard');
+    if (!state.scores || state.scores.length === 0) {
+        ol.innerHTML = '<li class="lb-empty">No teams yet</li>';
+        return;
+    }
+    const rows = state.scores.slice(0, top).map((s, i) => `
+        <li>
+            <span class="lb-rank">${i + 1}</span>
+            <span class="lb-name">${escHtml(s.team_name)}</span>
+            <span class="lb-points">${s.points}</span>
+        </li>`).join('');
+    ol.innerHTML = rows;
+}
+
+function renderEnded(payload) {
+    const finalScores = (payload && payload.final_scores) ? payload.final_scores : state.scores;
+    state.scores = finalScores;
+    const podium = $('podium');
+    const top = finalScores.slice(0, 5);
+    podium.innerHTML = top.length === 0
+        ? '<li class="lb-empty">No teams</li>'
+        : top.map((s, i) => `
+            <li>
+                <span class="pd-rank">${i + 1}</span>
+                <span class="pd-name">${escHtml(s.team_name)}</span>
+                <span class="pd-points">${s.points}</span>
+            </li>`).join('');
+    $('qnum').textContent = '';
+    showView('ended-view');
+    setStatePill('ENDED', 'ended');
+    stopTimer();
+    renderLeaderboard();
+}
+
+// ---------- Timer ----------
+function startTimer(endMs) {
+    stopTimer();
+    state.timerEnd = endMs;
+    $('timer').classList.remove('locked');
+    tickTimer();
+    state.timerId = setInterval(tickTimer, 250);
+}
+function tickTimer() {
+    const remainingMs = Math.max(0, state.timerEnd - Date.now());
+    const secs = Math.ceil(remainingMs / 1000);
+    $('timer-num').textContent = secs;
+    $('timer').classList.toggle('warn', secs <= 5 && secs > 0);
+    if (remainingMs <= 0) stopTimer();
+}
+function stopTimer() {
+    if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
+}
+
+// ---------- Lifeline ticker ----------
+function flashTickerMessage(msg) {
+    const el = $('ticker-text');
+    el.textContent = msg;
+    el.classList.add('show', 'flash');
+    if (state.tickerHideTimer) clearTimeout(state.tickerHideTimer);
+    state.tickerHideTimer = setTimeout(() => {
+        el.classList.remove('show');
+        // Strip flash after the animation, keeps it ready for next call.
+        setTimeout(() => el.classList.remove('flash'), 400);
+    }, 5000);
+}
+
+// ---------- Snapshot fetch ----------
+async function fetchSnapshot() {
+    if (!Number.isInteger(EVENT_ID)) return;
+    try {
+        const res = await fetch(`/api/display/${EVENT_ID}/snapshot`, { cache: 'no-store' });
+        if (res.status === 404) {
+            $('event-title').textContent = '';
+            $('error-msg').textContent = 'Event not found';
+            $('error-sub').textContent = `No event with id ${EVENT_ID}.`;
+            showView('error-view');
+            setStatePill('ERROR', 'locked');
+            return;
+        }
+        if (!res.ok) throw new Error('snapshot HTTP ' + res.status);
+        const snap = await res.json();
+        applySnapshot(snap);
+    } catch (err) {
+        console.warn('snapshot fetch failed:', err);
+    }
+}
+
+function applySnapshot(snap) {
+    state.event   = snap.event;
+    state.scores  = snap.scores || [];
+    state.correct_option = snap.correct_option || null;
+    renderEventHeader();
+    renderLeaderboard();
+
+    // Initial-fill ticker with the most recent lifeline if any.
+    if (snap.lifelines_used && snap.lifelines_used.length > 0) {
+        const last = snap.lifelines_used[snap.lifelines_used.length - 1];
+        const el = $('ticker-text');
+        el.textContent = `Team ${last.team_name} used a lifeline`;
+        el.classList.add('show');
+    }
+
+    // Choose view based on event status + current question.
+    if (snap.event.status === 'completed') {
+        renderEnded({ final_scores: state.scores });
+    } else if (snap.current_question) {
+        state.question = snap.current_question;
+        renderQuestion(snap.current_question);
+    } else if (snap.event.status === 'draft') {
+        $('error-msg').textContent = 'Event not yet published';
+        $('error-sub').textContent = 'The host has not published this event.';
+        showView('error-view');
+        setStatePill('DRAFT', 'lobby');
+    } else {
+        renderLobby();
+    }
+}
+
+// ---------- Socket handlers ----------
+function connectSocket() {
+    const socket = io('/display', { transports: ['websocket'] });
+    state.socket = socket;
+
+    socket.on('connect', () => {
+        $('conn-pill').hidden = true;
+        socket.emit('display:subscribe', { event_id: EVENT_ID });
+        // Re-fetch snapshot on every (re)connect to recover state.
+        fetchSnapshot();
+    });
+    socket.on('disconnect', () => {
+        $('conn-pill').hidden = false;
+        stopTimer();
+    });
+    socket.on('connect_error', () => {
+        $('conn-pill').hidden = false;
+    });
+
+    socket.on('lobby:team_joined', (p) => {
+        // Track team in scores list if not present so leaderboard reflects it.
+        if (!state.scores.find(s => s.team_id === p.team_id)) {
+            state.scores.push({ team_id: p.team_id, team_name: p.team_name, points: 0 });
+        }
+        renderLeaderboard();
+        // If we're on lobby view, refresh the count line.
+        if ($('lobby-view').classList.contains('active')) renderLobby();
+    });
+
+    socket.on('question:show', (p) => {
+        // Live broadcast: started_at not included; renderQuestion treats now() as start.
+        state.question = { ...p, state: 'active' };
+        state.correct_option = null;
+        state.paused = false;
+        renderQuestion(state.question);
+    });
+    socket.on('question:locked', () => {
+        if (state.question) state.question.state = 'locked';
+        showLocked();
+    });
+    socket.on('question:revealed', (p) => {
+        state.correct_option = p.correct_option;
+        if (state.question) state.question.state = 'revealed';
+        markRevealed(p.correct_option);
+    });
+    socket.on('scores:update', (p) => {
+        state.scores = (p.scores || []).map(s => ({
+            team_id: s.team_id, team_name: s.team_name, points: s.points,
+        }));
+        renderLeaderboard();
+    });
+    socket.on('event:paused', () => {
+        state.paused = true;
+        stopTimer();
+        showView('intermission-view');
+        setStatePill('INTERMISSION', 'intermission');
+    });
+    socket.on('event:resumed', () => {
+        state.paused = false;
+        // Don't auto-advance the view; the next question:show will do it.
+        // Until then keep showing intermission.
+    });
+    socket.on('game:ended', (p) => {
+        renderEnded(p);
+    });
+    socket.on('lifeline:used', (p) => {
+        flashTickerMessage(`Team ${p.team_name} used a lifeline`);
+    });
+}
+
+// ---------- Fullscreen ----------
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        (document.documentElement.requestFullscreen || (() => {})).call(document.documentElement);
+    } else if (document.exitFullscreen) {
+        document.exitFullscreen();
+    }
+}
+
+// ---------- Boot ----------
+(function boot() {
+    if (!Number.isInteger(EVENT_ID) || EVENT_ID <= 0) {
+        showView('no-event-view');
+        setStatePill('NO EVENT', 'lobby');
+        $('event-title').textContent = '';
+        return;
+    }
+    fetchSnapshot();
+    connectSocket();
+})();
+</script>
+<script>document.querySelectorAll('.js-host').forEach(function (el) { el.textContent = location.host + (el.dataset.path || ''); });</script>
+</body>
+</html>
