@@ -63,7 +63,9 @@ function showApp() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'block';
     document.getElementById('user-display').textContent = currentUser.display_name;
-    loadDashboard();
+    // Always open on the Dashboard (which loads its data); after a logout the
+    // previously open tab would otherwise show the last session's list.
+    switchTab('dashboard');
 }
 
 // ---- TABS ----
