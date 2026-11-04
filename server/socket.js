@@ -241,7 +241,8 @@ function attachSocketIO(httpServer) {
         const u = socket.data.user || {};
         logLine('/host', 'accepted', socket.id, `user=${u.username || u.id || '?'}`);
 
-        socket.on('host:watch_event', async ({ event_id } = {}) => {
+        socket.on('host:watch_event', async (payload) => {
+            const { event_id } = payload || {};  // a null payload must not throw
             if (!Number.isInteger(event_id)) return emitError(socket, 'invalid_input', 'event_id (int) required');
             try {
                 const [ev] = await pool.query('SELECT id FROM events WHERE id = ?', [event_id]);
@@ -255,7 +256,8 @@ function attachSocketIO(httpServer) {
             }
         });
 
-        socket.on('host:start_event', async ({ event_id } = {}) => {
+        socket.on('host:start_event', async (payload) => {
+            const { event_id } = payload || {};  // a null payload must not throw
             if (!Number.isInteger(event_id)) return emitError(socket, 'invalid_input', 'event_id (int) required');
             try {
                 const [evs] = await pool.query('SELECT id, status FROM events WHERE id = ?', [event_id]);
@@ -285,7 +287,8 @@ function attachSocketIO(httpServer) {
             }
         });
 
-        socket.on('host:next_question', async ({ event_id } = {}) => {
+        socket.on('host:next_question', async (payload) => {
+            const { event_id } = payload || {};  // a null payload must not throw
             if (!Number.isInteger(event_id)) return emitError(socket, 'invalid_input', 'event_id (int) required');
             try {
                 const [states] = await pool.query('SELECT status FROM event_state WHERE event_id = ?', [event_id]);
@@ -306,14 +309,16 @@ function attachSocketIO(httpServer) {
             }
         });
 
-        socket.on('host:pause_event', async ({ event_id } = {}) => {
+        socket.on('host:pause_event', async (payload) => {
+            const { event_id } = payload || {};  // a null payload must not throw
             if (!Number.isInteger(event_id)) return emitError(socket, 'invalid_input', 'event_id (int) required');
             cancelQuestionTimer(event_id);
             broadcastToEvent(event_id, 'event:paused', {});
             logLine('/host', 'pause', socket.id, `event=${event_id}`);
         });
 
-        socket.on('host:resume_event', async ({ event_id } = {}) => {
+        socket.on('host:resume_event', async (payload) => {
+            const { event_id } = payload || {};  // a null payload must not throw
             if (!Number.isInteger(event_id)) return emitError(socket, 'invalid_input', 'event_id (int) required');
             // PHASE 7 HARDENING: resume currently does not re-schedule
             // the remaining timer portion. Pause cancels the timer, and
@@ -325,7 +330,7 @@ function attachSocketIO(httpServer) {
             logLine('/host', 'resume', socket.id, `event=${event_id}`);
         });
 
-        socket.on('host:end_event', ({ event_id } = {}) => handleEnd(socket, event_id));
+        socket.on('host:end_event', (payload) => handleEnd(socket, (payload || {}).event_id));
 
         socket.on('disconnect', (reason) => logLine('/host', 'disconnect', socket.id, `reason=${reason}`));
     });
@@ -609,7 +614,8 @@ function attachSocketIO(httpServer) {
     displayNs.on('connection', (socket) => {
         logLine('/display', 'accepted', socket.id, '');
 
-        socket.on('display:subscribe', async ({ event_id } = {}) => {
+        socket.on('display:subscribe', async (payload) => {
+            const { event_id } = payload || {};  // a null payload must not throw
             if (!Number.isInteger(event_id)) return emitError(socket, 'invalid_input', 'event_id (int) required');
             try {
                 const [ev] = await pool.query('SELECT id FROM events WHERE id = ?', [event_id]);
