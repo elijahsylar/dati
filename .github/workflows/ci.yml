@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-        node: [20, 24]
+        node: [18, 20, 24] # 18: the oldest version package.json and the README support
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
