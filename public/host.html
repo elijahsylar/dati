@@ -202,9 +202,9 @@
 <body>
 
 <!-- ===================== LOGIN ===================== -->
-<div id="login-screen" class="login-wrap">
+<div id="login-screen" class="login-wrap" role="main">
     <div class="login-card">
-        <h2>🎯 D.A.T.I.</h2>
+        <h1>🎯 D.A.T.I.</h1>
         <p>Don't Ask The Internet — Host Control</p>
         <div id="login-error" class="error-msg"></div>
         <form onsubmit="login(event)">
@@ -223,15 +223,15 @@
 
 <!-- ===================== EVENT SELECT ===================== -->
 <div id="event-select-screen" style="display:none">
-    <nav class="navbar">
+    <header class="navbar">
         <h1>🎯 D.A.T.I. <span>Host</span></h1>
         <div style="display:flex;align-items:center;gap:16px">
             <a href="/" style="color:var(--gold);font-size:13px;text-decoration:none">Admin Panel</a>
             <span class="user-info" id="user-display-1"></span>
             <button onclick="logout()">Logout</button>
         </div>
-    </nav>
-    <div class="container">
+    </header>
+    <div class="container" role="main">
         <div class="card">
             <h2 style="color:var(--navy);margin-bottom:6px">Select an event to host</h2>
             <p style="color:var(--text-muted);font-size:13px">
@@ -244,7 +244,7 @@
 
 <!-- ===================== CONTROL ROOM ===================== -->
 <div id="control-screen" style="display:none">
-    <nav class="navbar">
+    <header class="navbar">
         <h1>🎯 D.A.T.I. <span>Host</span></h1>
         <div style="display:flex;align-items:center;gap:14px">
             <span id="event-title-nav" style="font-size:13px;opacity:0.85"></span>
@@ -252,9 +252,9 @@
             <button onclick="backToEventSelect()">Change Event</button>
             <button onclick="logout()">Logout</button>
         </div>
-    </nav>
+    </header>
 
-    <div class="host-grid">
+    <div class="host-grid" role="main">
         <!-- main column -->
         <div>
             <div class="card">

@@ -126,7 +126,7 @@
             border-radius: 12px;
             margin-bottom: 24px;
         }
-        .event-header h2 { color: var(--navy); margin: 0 0 4px; font-size: 20px; }
+        .event-header h1, .event-header h2 { color: var(--navy); margin: 0 0 4px; font-size: 20px; }
         .event-header .theme { font-size: 13px; color: var(--text-muted); letter-spacing: 0.5px; }
         .form-label {
             display: block;
@@ -322,6 +322,8 @@
             border-bottom: 1px solid var(--border);
         }
         .gp-event-title {
+            margin: 0;
+            font-weight: inherit;
             font-size: 13px;
             color: var(--text-muted);
             letter-spacing: 0.5px;
@@ -554,7 +556,7 @@
 <body>
 
 <!-- =================== SCREEN 1: CODE ENTRY =================== -->
-<div id="screen-1" class="join-card screen">
+<div id="screen-1" class="join-card screen" role="main">
     <div class="brand">
         <h1 class="brand-mark">D.A.T.I<span>.</span></h1>
         <div class="brand-sub">DON'T ASK THE INTERNET</div>
@@ -570,9 +572,9 @@
 </div>
 
 <!-- =================== SCREEN 2: TEAM SETUP =================== -->
-<div id="screen-2" class="join-card screen">
+<div id="screen-2" class="join-card screen" role="main">
     <div class="event-header">
-        <h2 id="s2-event-title">—</h2>
+        <h1 id="s2-event-title">—</h1>
         <div class="theme" id="s2-theme">—</div>
     </div>
     <label class="form-label" for="team-name-input">Team name</label>
@@ -590,9 +592,9 @@
 </div>
 
 <!-- =================== SCREEN 3: LOBBY =================== -->
-<div id="screen-3" class="join-card screen">
+<div id="screen-3" class="join-card screen" role="main">
     <div class="event-header">
-        <h2 id="s3-event-title">—</h2>
+        <h1 id="s3-event-title">—</h1>
         <div class="theme" id="s3-theme">—</div>
     </div>
     <div class="lobby-status">
@@ -610,10 +612,10 @@
 
 <!-- =================== SCREEN 4: GAMEPLAY PLACEHOLDER =================== -->
 <!-- Phase 3 will replace this entirely with real gameplay UI. -->
-<div id="screen-4" class="join-card screen">
+<div id="screen-4" class="join-card screen" role="main">
     <div class="gameplay">
         <div class="gp-header">
-            <div class="gp-event-title" id="s4-event-title">.</div>
+            <h1 class="gp-event-title" id="s4-event-title">.</h1>
             <div class="gp-qmeta">
                 <span class="gp-qnum" id="s4-qnum">.</span>
                 <span class="gp-timer" id="s4-timer">.</span>

@@ -41,6 +41,10 @@
             padding: 40px 24px;
             background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
         }
+        .visually-hidden {
+            position: absolute; width: 1px; height: 1px; overflow: hidden;
+            clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+        }
         .lobby-logo {
             font-size: 56px;
             font-weight: 900;
@@ -283,6 +287,7 @@
             background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
         }
         .scoreboard-title {
+            font-weight: inherit;
             font-size: 16px;
             color: var(--text-muted);
             text-transform: uppercase;
@@ -356,8 +361,8 @@
 <body>
 
 <!-- ============================== LOBBY ============================== -->
-<div id="screen-lobby" class="screen lobby active">
-    <div class="lobby-logo">D.A.T.I.</div>
+<div id="screen-lobby" class="screen lobby active" role="main">
+    <h1 class="lobby-logo">D.A.T.I.</h1>
     <div class="lobby-sub">Don't Ask The Internet</div>
 
     <div class="lobby-theme">
@@ -379,7 +384,8 @@
 </div>
 
 <!-- ============================== GAME ============================== -->
-<div id="screen-game" class="screen game">
+<div id="screen-game" class="screen game" role="main">
+    <h1 class="visually-hidden">D.A.T.I. demo game</h1>
     <div class="game-header">
         <div class="q-count">Question <span id="q-num">1</span> / <span id="q-total">10</span></div>
         <div class="score-display">⭐ <span id="live-score">0</span> pts</div>
@@ -396,8 +402,8 @@
 </div>
 
 <!-- ============================== SCOREBOARD ============================== -->
-<div id="screen-score" class="screen scoreboard">
-    <div class="scoreboard-title">Final Score</div>
+<div id="screen-score" class="screen scoreboard" role="main">
+    <h1 class="scoreboard-title">Final Score</h1>
     <div class="final-score" id="final-score">0</div>
     <div class="score-subtitle" id="score-subtitle">out of 100 points</div>
 

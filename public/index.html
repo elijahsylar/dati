@@ -11,9 +11,9 @@
 <body>
 
 <!-- ============================== LOGIN ============================== -->
-<div id="login-screen" class="login-wrap">
+<div id="login-screen" class="login-wrap" role="main">
     <div class="login-card">
-        <h2>🎯 D.A.T.I.</h2>
+        <h1>🎯 D.A.T.I.</h1>
         <p>Don't Ask The Internet — Admin Panel</p>
         <div id="login-error" class="error-msg"></div>
         <form onsubmit="login(event)">
@@ -32,23 +32,23 @@
 
 <!-- ============================== APP ============================== -->
 <div id="app-screen" style="display:none">
-    <nav class="navbar">
+    <header class="navbar">
         <h1>🎯 D.A.T.I. <span>Admin</span></h1>
         <div style="display:flex;align-items:center;gap:16px">
             <a href="/play.html" target="_blank" style="background:var(--gold);color:var(--navy);padding:6px 14px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">🎮 Test Game</a>
             <span class="user-info" id="user-display"></span>
             <button onclick="logout()">Logout</button>
         </div>
-    </nav>
+    </header>
 
-    <div class="tabs">
+    <nav class="tabs" aria-label="Sections">
         <div class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</div>
         <div class="tab" data-tab="themes" onclick="switchTab('themes')">Themes</div>
         <div class="tab" data-tab="questions" onclick="switchTab('questions')">Questions</div>
         <div class="tab" data-tab="events" onclick="switchTab('events')">Events</div>
-    </div>
+    </nav>
 
-    <div class="container">
+    <div class="container" role="main">
 
         <!-- ---- DASHBOARD ---- -->
         <div id="page-dashboard" class="page active">

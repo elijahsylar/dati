@@ -240,7 +240,8 @@ tr:hover td { background: #F8F9FA; }
     max-width: 400px;
     box-shadow: 0 8px 30px rgba(0,0,0,0.3);
 }
-.login-card h2 { color: var(--navy); text-align: center; margin-bottom: 8px; }
+.login-card h1, .login-card h2 { color: var(--navy); text-align: center; margin-bottom: 8px; }
+.login-card h1 { font-size: 1.5em; } /* the size the h2 had */
 .login-card p { text-align: center; color: var(--text-muted); margin-bottom: 24px; font-size: 14px; }
 .login-card .btn { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
 .error-msg { color: var(--danger); font-size: 13px; text-align: center; margin-bottom: 12px; }
