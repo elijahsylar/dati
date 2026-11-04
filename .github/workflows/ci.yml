@@ -15,8 +15,8 @@ jobs:
       matrix:
         node: [18, 20, 24] # 18: the oldest version package.json and the README support
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
