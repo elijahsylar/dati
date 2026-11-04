@@ -497,6 +497,10 @@
             box-shadow: none;
             cursor: not-allowed;
         }
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; overflow: hidden;
+            clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+        }
         .lifeline-overlay {
             display: none;
             position: fixed;
@@ -652,18 +656,18 @@
 </div>
 
 <!-- =================== HONOR SYSTEM MODAL (phones only) =================== -->
-<div id="honor-modal" class="modal-overlay">
+<div id="honor-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="honor-title">
     <div class="modal-card">
-        <p>You've joined on mobile.</p>
+        <p id="honor-title">You've joined on mobile.</p>
         <p>We can't lock your access to the internet. The lifeline button will appear inside DATI when it's your turn to use it. Please use an honor system and refrain from asking the internet unless you've been given a pass.</p>
         <button class="big-btn" onclick="dismissHonorModal()">I understand</button>
     </div>
 </div>
 
 <!-- =================== LIFELINE OVERLAY (Phase 5) =================== -->
-<div id="lifeline-overlay" class="lifeline-overlay">
+<div id="lifeline-overlay" class="lifeline-overlay" role="dialog" aria-modal="true" aria-label="Lifeline search">
     <div class="lifeline-overlay__chrome">
-        <div class="lifeline-overlay__timer" id="lifeline-timer">30</div>
+        <div class="lifeline-overlay__timer"><span id="lifeline-timer">30</span><span class="sr-only"> seconds left</span></div>
         <button class="lifeline-overlay__close" onclick="closeLifelineOverlay()" aria-label="Close">Close</button>
     </div>
     <div class="lifeline-overlay__honor">Use this 30 seconds for the current question only. The honor system is on you.</div>
@@ -790,6 +794,14 @@ function useLifeline() {
     });
 }
 
+// Move focus to el (made focusable if it is not), so screen readers follow
+// a dialog opening or closing.
+function focusEl(el) {
+    if (!el) return;
+    if (!el.matches('a, button, input, select, textarea, [tabindex]')) el.setAttribute('tabindex', '-1');
+    el.focus({ preventScroll: true });
+}
+
 function openLifelineOverlay() {
     lifelineActive = true;
     const overlay = document.getElementById('lifeline-overlay');
@@ -799,6 +811,13 @@ function openLifelineOverlay() {
     let remaining = LIFELINE_DURATION_SEC;
     timerEl.textContent = remaining;
     overlay.classList.add('visible');
+    // Focus goes into the dialog: Close at once, then the search box when
+    // the (same-origin) search page has loaded.
+    focusEl(overlay.querySelector('.lifeline-overlay__close'));
+    iframe.addEventListener('load', () => {
+        if (!lifelineActive) return;
+        try { iframe.contentDocument.querySelector('input[name="q"]')?.focus(); } catch (_) {}
+    }, { once: true });
     lifelineTimerId = setInterval(() => {
         remaining -= 1;
         timerEl.textContent = remaining;
@@ -816,6 +835,7 @@ function closeLifelineOverlay() {
     lifelineActive = false;
     markLifelineUsedInStorage();
     syncLifelineButtonFromStorage();
+    focusEl(document.getElementById('s4-qtext'));
 }
 
 // =============================================================
@@ -827,9 +847,11 @@ function maybeShowHonorModal() {
     try { session = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (_) {}
     if (session && session.honor_acknowledged === true) return;
     document.getElementById('honor-modal').classList.add('visible');
+    focusEl(document.querySelector('#honor-modal .big-btn'));
 }
 function dismissHonorModal() {
     document.getElementById('honor-modal').classList.remove('visible');
+    focusEl(document.querySelector('.screen.active h1'));
     let session = null;
     try { session = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (_) {}
     if (!session) return;
