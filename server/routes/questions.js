@@ -4,7 +4,8 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 
 // GET /api/questions — list questions (optional ?theme_id= filter)
-router.get('/', async (req, res) => {
+// Admin only: rows include correct_answer.
+router.get('/', auth, async (req, res) => {
     try {
         let query = `
             SELECT q.*, t.name AS theme_name
@@ -33,8 +34,8 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/questions/:id
-router.get('/:id', async (req, res) => {
+// GET /api/questions/:id (admin only: includes correct_answer)
+router.get('/:id', auth, async (req, res) => {
     try {
         const [rows] = await pool.query(
             `SELECT q.*, t.name AS theme_name

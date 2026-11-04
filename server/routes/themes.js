@@ -20,8 +20,9 @@ router.get('/', async (req, res) => {
     }
 });
 
-// GET /api/themes/:id — single theme with questions
-router.get('/:id', async (req, res) => {
+// GET /api/themes/:id — single theme with questions (admin only: the
+// questions include correct_answer)
+router.get('/:id', auth, async (req, res) => {
     try {
         const [themes] = await pool.query('SELECT * FROM themes WHERE id = ?', [req.params.id]);
         if (themes.length === 0) return res.status(404).json({ error: 'Theme not found' });
