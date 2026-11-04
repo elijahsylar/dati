@@ -9,8 +9,8 @@
     --text: #1A1A1A;
     --text-muted: #6B6B6B;
     --border: #E0E0E0;
-    --success: #2D8544;
-    --warning: #B8860B;
+    --success: #297A3F; /* AA: 4.7:1 on the pale green badges, 5.3:1 under white text */
+    --warning: #8E6708; /* AA: 4.7:1 on the pale amber badges, 5.1:1 under white text */
     --danger: #C0392B;
     --radius: 8px;
 }
@@ -158,8 +158,8 @@ tr:hover td { background: #F8F9FA; }
 }
 .btn-primary { background: var(--navy); color: white; }
 .btn-primary:hover { background: var(--navy-light); }
-.btn-gold { background: var(--gold); color: white; }
-.btn-gold:hover { background: #C49A3A; }
+.btn-gold { background: var(--gold); color: var(--navy); } /* white on gold was 2.21:1; navy 4.92:1 */
+.btn-gold:hover { background: #E0B85A; } /* navy 5.8:1 */
 .btn-danger { background: var(--danger); color: white; }
 .btn-danger:hover { background: #A93226; }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
