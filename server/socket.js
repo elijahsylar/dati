@@ -563,9 +563,16 @@ function attachSocketIO(httpServer) {
                 if (typeof ack === 'function') ack({ accepted: true, points_earned: points, is_correct: isCorrect });
                 logLine('/player', 'answer', socket.id, `team=${team.id} q=${question_id} opt=${selected_option} pts=${points} rt=${response_time_ms}ms`);
 
-                // Always update scores after a submission.
-                const scores = await computeScoresWithLastAnswer(team.event_id, question_id);
-                broadcastToEvent(team.event_id, 'scores:update', { scores });
+                // Always update scores after a submission. The answer is
+                // already saved and acked: a failure here is logged, not
+                // reported to the team as a failed answer, and must not skip
+                // the early lock below.
+                try {
+                    const scores = await computeScoresWithLastAnswer(team.event_id, question_id);
+                    broadcastToEvent(team.event_id, 'scores:update', { scores });
+                } catch (err) {
+                    console.error('scores:update after answer failed:', err);
+                }
 
                 if (allSubmitted) {
                     lockQuestion(team.event_id, 'all_submitted').catch(e => console.error('lock (all) error:', e));
