@@ -243,10 +243,16 @@ function attachSocketIO(httpServer) {
 
         socket.on('host:watch_event', async ({ event_id } = {}) => {
             if (!Number.isInteger(event_id)) return emitError(socket, 'invalid_input', 'event_id (int) required');
-            const [ev] = await pool.query('SELECT id FROM events WHERE id = ?', [event_id]);
-            if (ev.length === 0) return emitError(socket, 'event_not_found', `No event ${event_id}`);
-            socket.join(roomName(event_id));
-            logLine('/host', 'watch', socket.id, `event=${event_id}`);
+            try {
+                const [ev] = await pool.query('SELECT id FROM events WHERE id = ?', [event_id]);
+                if (ev.length === 0) return emitError(socket, 'event_not_found', `No event ${event_id}`);
+                socket.join(roomName(event_id));
+                logLine('/host', 'watch', socket.id, `event=${event_id}`);
+            } catch (err) {
+                // An unhandled rejection here would stop the whole server.
+                console.error('host:watch_event error:', err);
+                emitError(socket, 'db_error', err.code || err.message);
+            }
         });
 
         socket.on('host:start_event', async ({ event_id } = {}) => {
@@ -489,7 +495,13 @@ function attachSocketIO(httpServer) {
                 return ackOrEmit(socket, ack, 'invalid_timing', 'response_time_ms must be a non-negative number');
             }
 
-            const conn = await pool.getConnection();
+            let conn;
+            try {
+                conn = await pool.getConnection();
+            } catch (err) {
+                console.error('team:submit_answer getConnection error:', err);
+                return ackOrEmit(socket, ack, 'db_error', err.code || err.message);
+            }
             try {
                 await conn.beginTransaction();
                 const [states] = await conn.query(
@@ -568,10 +580,14 @@ function attachSocketIO(httpServer) {
             if (!socket.data.team) return ackOrEmit(socket, ack, 'not_authenticated', 'No session_token in handshake');
             const team = socket.data.team;
             try {
-                const [rows] = await pool.query('SELECT lifeline_used FROM teams WHERE id = ?', [team.id]);
-                if (rows.length === 0) return ackOrEmit(socket, ack, 'not_found', 'team row missing');
-                if (rows[0].lifeline_used) return ackOrEmit(socket, ack, 'lifeline_already_used', 'Team has already used lifeline');
-                await pool.query('UPDATE teams SET lifeline_used = 1 WHERE id = ?', [team.id]);
+                // One atomic update, so two sockets for the same team cannot
+                // both pass a separate "already used?" check.
+                const [upd] = await pool.query('UPDATE teams SET lifeline_used = 1 WHERE id = ? AND lifeline_used = 0', [team.id]);
+                if (upd.affectedRows === 0) {
+                    const [rows] = await pool.query('SELECT id FROM teams WHERE id = ?', [team.id]);
+                    if (rows.length === 0) return ackOrEmit(socket, ack, 'not_found', 'team row missing');
+                    return ackOrEmit(socket, ack, 'lifeline_already_used', 'Team has already used lifeline');
+                }
                 if (typeof ack === 'function') ack({ accepted: true });
                 broadcastToEvent(team.event_id, 'lifeline:used', { team_id: team.id, team_name: team.team_name });
                 logLine('/player', 'lifeline', socket.id, `team=${team.id}`);
@@ -595,10 +611,16 @@ function attachSocketIO(httpServer) {
 
         socket.on('display:subscribe', async ({ event_id } = {}) => {
             if (!Number.isInteger(event_id)) return emitError(socket, 'invalid_input', 'event_id (int) required');
-            const [ev] = await pool.query('SELECT id FROM events WHERE id = ?', [event_id]);
-            if (ev.length === 0) return emitError(socket, 'event_not_found', `No event ${event_id}`);
-            socket.join(roomName(event_id));
-            logLine('/display', 'subscribe', socket.id, `event=${event_id}`);
+            try {
+                const [ev] = await pool.query('SELECT id FROM events WHERE id = ?', [event_id]);
+                if (ev.length === 0) return emitError(socket, 'event_not_found', `No event ${event_id}`);
+                socket.join(roomName(event_id));
+                logLine('/display', 'subscribe', socket.id, `event=${event_id}`);
+            } catch (err) {
+                // /display needs no login: a failed query must not stop the server.
+                console.error('display:subscribe error:', err);
+                emitError(socket, 'db_error', err.code || err.message);
+            }
         });
 
         socket.on('disconnect', (reason) => logLine('/display', 'disconnect', socket.id, `reason=${reason}`));
