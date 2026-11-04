@@ -102,19 +102,26 @@ async function loadDashboard() {
 }
 
 // ---- THEMES ----
+// Text from the API goes into innerHTML templates: escape it. Strings passed
+// to inline onclick handlers are JSON-encoded, then escaped for the attribute.
+function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function jsArg(v) { return esc(JSON.stringify(String(v ?? ''))); }
+
 async function loadThemes() {
     try {
         themes = await api('/api/themes');
         const tbody = document.getElementById('themes-body');
         tbody.innerHTML = themes.map(t => `
             <tr>
-                <td><strong>${t.name}</strong></td>
-                <td>${t.description || '—'}</td>
+                <td><strong>${esc(t.name)}</strong></td>
+                <td>${t.description ? esc(t.description) : '—'}</td>
                 <td>${t.question_count}</td>
                 <td>${t.is_active ? '✅' : '❌'}</td>
                 <td class="actions">
                     <button class="btn btn-sm btn-outline" onclick="editTheme(${t.id})">Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteTheme(${t.id}, '${t.name}')">Delete</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteTheme(${t.id}, ${jsArg(t.name)})">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -179,7 +186,7 @@ async function loadQuestions() {
         const filter = document.getElementById('question-theme-filter');
         const currentVal = filter.value;
         filter.innerHTML = '<option value="">All Themes</option>' +
-            themes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            themes.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
         filter.value = currentVal;
 
         let filtered = questions;
@@ -188,10 +195,10 @@ async function loadQuestions() {
         const tbody = document.getElementById('questions-body');
         tbody.innerHTML = filtered.map(q => `
             <tr>
-                <td>${q.theme_name}</td>
-                <td>${q.question_text.length > 80 ? q.question_text.slice(0, 80) + '…' : q.question_text}</td>
-                <td><span class="badge badge-${q.difficulty}">${q.difficulty}</span></td>
-                <td><strong>${q.correct_answer}</strong></td>
+                <td>${esc(q.theme_name)}</td>
+                <td>${esc(q.question_text.length > 80 ? q.question_text.slice(0, 80) + '…' : q.question_text)}</td>
+                <td><span class="badge badge-${esc(q.difficulty)}">${esc(q.difficulty)}</span></td>
+                <td><strong>${esc(q.correct_answer)}</strong></td>
                 <td class="actions">
                     <button class="btn btn-sm btn-outline" onclick="editQuestion(${q.id})">Edit</button>
                     <button class="btn btn-sm btn-danger" onclick="deleteQuestion(${q.id})">Delete</button>
@@ -208,7 +215,7 @@ function openQuestionModal(q = null) {
     document.getElementById('q-id').value = q ? q.id : '';
 
     const sel = document.getElementById('q-theme');
-    sel.innerHTML = themes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    sel.innerHTML = themes.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
     if (q) sel.value = q.theme_id;
 
     document.getElementById('q-text').value = q ? q.question_text : '';
@@ -274,12 +281,12 @@ async function loadEvents() {
         const tbody = document.getElementById('events-body');
         tbody.innerHTML = events.map(e => `
             <tr>
-                <td><strong>${e.title}</strong></td>
-                <td>${e.theme_name}</td>
+                <td><strong>${esc(e.title)}</strong></td>
+                <td>${esc(e.theme_name)}</td>
                 <td>${new Date(e.event_date).toLocaleDateString()}</td>
                 <td>${e.start_time.slice(0, 5)}</td>
                 <td>${e.max_teams} teams / ${e.max_players_per_team} per</td>
-                <td><span class="badge badge-${e.status}">${e.status}</span></td>
+                <td><span class="badge badge-${esc(e.status)}">${esc(e.status)}</span></td>
                 <td class="actions">${eventActionsFor(e)}</td>
             </tr>
         `).join('');
@@ -293,26 +300,26 @@ async function loadEvents() {
 // draft↔published transitions are admin; live/completed are socket-owned.
 // QR button shows only on published/live events that have a join_code.
 function eventActionsFor(e) {
-    const t = e.title.replace(/'/g, "\\'");
-    const demoLink = `<a href="/play.html?theme_id=${e.theme_id}&title=${encodeURIComponent(e.title)}" target="_blank" class="btn btn-sm btn-gold">▶ Demo</a>`;
+    const t = jsArg(e.title);
+    const demoLink = `<a href="/play.html?theme_id=${e.theme_id}&title=${esc(encodeURIComponent(e.title))}" target="_blank" class="btn btn-sm btn-gold">▶ Demo</a>`;
     const demoDisabled = `<button class="btn btn-sm btn-gold" disabled>▶ Demo</button>`;
     const editBtn = `<button class="btn btn-sm btn-outline" onclick="editEvent(${e.id})">Edit</button>`;
     const editDisabled = `<button class="btn btn-sm btn-outline" disabled>Edit</button>`;
-    const cancelBtn = `<button class="btn btn-sm btn-danger" onclick="cancelEvent(${e.id}, '${t}')">Cancel</button>`;
+    const cancelBtn = `<button class="btn btn-sm btn-danger" onclick="cancelEvent(${e.id}, ${t})">Cancel</button>`;
     const qrBtn = (e.join_code && (e.status === 'published' || e.status === 'live'))
-        ? `<button class="btn btn-sm btn-primary" onclick="openQrModal(${e.id}, '${e.join_code}')">QR</button>`
+        ? `<button class="btn btn-sm btn-primary" onclick="openQrModal(${e.id}, ${jsArg(e.join_code)})">QR</button>`
         : '';
     switch (e.status) {
         case 'draft':
             return `<button class="btn btn-sm btn-primary" onclick="publishEvent(${e.id})">Publish</button>${editBtn}${demoLink}${cancelBtn}`;
         case 'published':
-            return `<button class="btn btn-sm btn-outline" onclick="unpublishEvent(${e.id}, '${t}')">Unpublish</button>${editBtn}${qrBtn}${demoLink}${cancelBtn}`;
+            return `<button class="btn btn-sm btn-outline" onclick="unpublishEvent(${e.id}, ${t})">Unpublish</button>${editBtn}${qrBtn}${demoLink}${cancelBtn}`;
         case 'live':
             return `${editDisabled}${qrBtn}${demoDisabled}`;
         case 'completed':
-            return `<button class="btn btn-sm btn-outline" onclick="resetEventToDraft(${e.id}, '${t}')">Reset to Draft</button>${demoLink}`;
+            return `<button class="btn btn-sm btn-outline" onclick="resetEventToDraft(${e.id}, ${t})">Reset to Draft</button>${demoLink}`;
         case 'cancelled':
-            return `<button class="btn btn-sm btn-outline" onclick="resetEventToDraft(${e.id}, '${t}')">Reset to Draft</button>`;
+            return `<button class="btn btn-sm btn-outline" onclick="resetEventToDraft(${e.id}, ${t})">Reset to Draft</button>`;
         default:
             return '';
     }
@@ -413,7 +420,7 @@ function openEventModal(ev = null) {
     document.getElementById('ev-id').value = ev ? ev.id : '';
 
     const sel = document.getElementById('ev-theme');
-    sel.innerHTML = themes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    sel.innerHTML = themes.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
     if (ev) sel.value = ev.theme_id;
 
     document.getElementById('ev-title').value = ev ? ev.title : '';
