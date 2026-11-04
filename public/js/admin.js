@@ -68,9 +68,11 @@ function showApp() {
 
 // ---- TABS ----
 function switchTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => { t.classList.remove('active'); t.removeAttribute('aria-current'); });
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    const current = document.querySelector(`[data-tab="${tab}"]`);
+    current.classList.add('active');
+    current.setAttribute('aria-current', 'page');
     document.getElementById(`page-${tab}`).classList.add('active');
 
     if (tab === 'dashboard') loadDashboard();
@@ -478,6 +480,10 @@ function closeModal(id) {
 
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', () => {
+    // The tabs are divs with click handlers: Enter and Space open them too.
+    document.querySelectorAll('.tab[data-tab]').forEach(t => t.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); switchTab(t.dataset.tab); }
+    }));
     if (token && currentUser) {
         showApp();
     } else {
