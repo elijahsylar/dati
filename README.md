@@ -107,6 +107,10 @@ npm test
 
 A completed course prototype; it is not running anywhere. Planned but not built: analytics for returning teams, and kiosk-mode setup guides for the tablets.
 
+## Project history
+
+The private original has commits from 24 February 2026 to 4 November 2026. Most of it was written between February and May 2026; the November 2026 commits are fixes. This public repository is a scrubbed snapshot of that private original, published in November 2026, which is why its commit history is short. Developed with Claude Code under a gated workflow of written plan, implementation, separate review and my sign-off.
+
 ## License
 
 MIT. See [LICENSE](LICENSE). The demo trivia questions in `db/seed.sql` were written for this project.
