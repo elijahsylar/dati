@@ -14,4 +14,19 @@ const auth = (req, res, next) => {
     }
 };
 
+// Roles in admin_users.role. An admin manages content (themes, questions,
+// events); a host runs a game night from the host console.
+const HOST_CONSOLE_ROLES = ['admin', 'host'];
+
+// requireRole('admin') or requireRole('admin', 'host'). Use after auth.
+// A token with no role, or a role not listed, is refused.
+const requireRole = (...roles) => (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+        return res.status(403).json({ error: 'Forbidden: insufficient role' });
+    }
+    next();
+};
+
 module.exports = auth;
+module.exports.requireRole = requireRole;
+module.exports.HOST_CONSOLE_ROLES = HOST_CONSOLE_ROLES;

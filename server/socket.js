@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('./db');
+const { HOST_CONSOLE_ROLES } = require('./middleware/auth');
 
 // =====================================================================
 //  D.A.T.I. — Socket.io wiring for Phase 1 multiplayer core
@@ -222,13 +223,19 @@ function attachSocketIO(httpServer) {
     }
 
     // =================================================================
-    //  /host — JWT auth
+    //  /host: JWT auth, role admin or host
     // =================================================================
     hostNs.use((socket, next) => {
         const token = socket.handshake.auth && socket.handshake.auth.token;
         if (!token) { logLine('/host', 'rejected', socket.id, 'reason=no_token'); return next(new Error('no_token')); }
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            // Every host:* event runs a game, so the role is checked once
+            // here: only an admin or a host may connect at all.
+            if (!HOST_CONSOLE_ROLES.includes(decoded.role)) {
+                logLine('/host', 'rejected', socket.id, 'reason=forbidden_role');
+                return next(new Error('forbidden_role'));
+            }
             socket.data.user = decoded;
             return next();
         } catch (err) {

@@ -1,11 +1,13 @@
 const express = require('express');
 const pool = require('../db');
 const auth = require('../middleware/auth');
+const { requireRole } = auth;
+const adminOnly = requireRole('admin');
 const router = express.Router();
 
 // GET /api/questions — list questions (optional ?theme_id= filter)
 // Admin only: rows include correct_answer.
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, adminOnly, async (req, res) => {
     try {
         let query = `
             SELECT q.*, t.name AS theme_name
@@ -35,7 +37,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // GET /api/questions/:id (admin only: includes correct_answer)
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, adminOnly, async (req, res) => {
     try {
         const [rows] = await pool.query(
             `SELECT q.*, t.name AS theme_name
@@ -53,7 +55,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // POST /api/questions — create question
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, adminOnly, async (req, res) => {
     try {
         const { theme_id, question_text, option_a, option_b, option_c, option_d, correct_answer, difficulty } = req.body;
 
@@ -80,7 +82,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // PUT /api/questions/:id — update question
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, adminOnly, async (req, res) => {
     try {
         const allowed = ['theme_id', 'question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'difficulty', 'is_active'];
         const fields = [];
@@ -107,7 +109,7 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // DELETE /api/questions/:id — soft delete
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, adminOnly, async (req, res) => {
     try {
         await pool.query('UPDATE questions SET is_active = 0 WHERE id = ?', [req.params.id]);
         res.json({ message: 'Question deactivated' });

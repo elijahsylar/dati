@@ -29,7 +29,7 @@ flowchart LR
     P -->|lifeline| L["/api/lifeline<br/>Wikipedia REST search"]
 ```
 
-- **Admin (REST)**: themes, a question bank with easy, medium and hard tiers, and events with a draft, published, active, completed lifecycle. Writes need a JWT; admin passwords are bcrypt-hashed.
+- **Admin (REST)**: themes, a question bank with easy, medium and hard tiers, and events with a draft, published, active, completed lifecycle. Writes need a JWT, and the `role` in it is enforced: an `admin` manages themes, questions and events, a `host` can only run a game (the host console, its team and score lists, and the join QR code and cards). Passwords are bcrypt-hashed.
 - **Game (Socket.io)**: three namespaces. The host console starts each question; the server owns the clock and broadcasts state; team answers are scored on the server and the leaderboard is recomputed from the database after every question.
 - **Snapshot recovery**: every client can rebuild its view from a REST snapshot of the current event state, so a tablet that drops Wi-Fi, or a host or display that joins late, recovers without the game restarting.
 - **Join flow**: each published event gets a 6-character join code from a 31-character alphabet with no look-alike characters (no I, L, O, 0 or 1), shown as `ABC-234`, with a QR code and a printable 2x2 tent-card sheet for the tables.
@@ -104,7 +104,7 @@ When the passwords are set, remove `SETUP_SECRET` from `.env` and restart. The r
 npm test
 ```
 
-34 tests. The pure functions: the scoring table and its boundaries, join-code alphabet and formatting, HTML escaping, the lifeline excerpt sanitizer and article links. The first-run setup guard and its setup secret, against a stubbed database pool. The Socket.io game flow (`test/socket.test.js`), with real Socket.io clients against the server on a local port and an in-memory fake of the database pool (`test/fake-db.js`): host authentication, joining as a team and reconnecting with a session token, answers, scoring and the timing check, the early lock and the server timer, the end of the game, and snapshot recovery over both the socket and REST. No MySQL is needed; the SQL itself is not exercised.
+41 tests. The pure functions: the scoring table and its boundaries, join-code alphabet and formatting, HTML escaping, the lifeline excerpt sanitizer and article links. The first-run setup guard and its setup secret, against a stubbed database pool. Role enforcement on every REST route (`test/roles.test.js`). The Socket.io game flow (`test/socket.test.js`), with real Socket.io clients against the server on a local port and an in-memory fake of the database pool (`test/fake-db.js`): host authentication and roles, joining as a team and reconnecting with a session token, answers, scoring and the timing check, the early lock and the server timer, the end of the game, and snapshot recovery over both the socket and REST. No MySQL is needed; the SQL itself is not exercised.
 
 ## Project status
 

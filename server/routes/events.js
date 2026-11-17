@@ -3,6 +3,9 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 const pool = require('../db');
 const auth = require('../middleware/auth');
+const { requireRole, HOST_CONSOLE_ROLES } = auth;
+const adminOnly = requireRole('admin');
+const hostOrAdmin = requireRole(...HOST_CONSOLE_ROLES);
 const socketModule = require('../socket');
 const router = express.Router();
 
@@ -67,7 +70,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/events — create event
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, adminOnly, async (req, res) => {
     try {
         const { theme_id, title, event_date, start_time, max_teams, max_players_per_team, question_count, time_limit_seconds } = req.body;
 
@@ -99,7 +102,7 @@ router.post('/', auth, async (req, res) => {
 // PUT /api/events/:id — update event (non-status fields only).
 // Status transitions go through PATCH /api/events/:id/status so validation
 // is centralized (live/completed are socket-layer owned).
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, adminOnly, async (req, res) => {
     try {
         const allowed = ['theme_id', 'title', 'event_date', 'start_time', 'max_teams', 'max_players_per_team', 'question_count', 'time_limit_seconds'];
         const fields = [];
@@ -137,7 +140,7 @@ router.put('/:id', auth, async (req, res) => {
 //   * target = draft → clear join_code to NULL (any source state).
 //   * target = cancelled → leave code alone (historical reference).
 //   * Re-publishing a published event (idempotent) is a no-op on code.
-router.patch('/:id/status', auth, async (req, res) => {
+router.patch('/:id/status', auth, adminOnly, async (req, res) => {
     try {
         const { status } = req.body || {};
         const allowedTargets = ['draft', 'published', 'cancelled'];
@@ -233,7 +236,7 @@ function htmlEscape(s) {
 // Admin JWT required. Auto-triggers window.print() on load so the host
 // just confirms the system print dialog. Layout fits 2x2 on standard
 // 8.5x11 with cut/fold guide borders.
-router.get('/:id/print-card.html', auth, async (req, res) => {
+router.get('/:id/print-card.html', auth, hostOrAdmin, async (req, res) => {
     try {
         const [rows] = await pool.query(
             `SELECT e.id, e.title, e.join_code, t.name AS theme_name
@@ -335,7 +338,7 @@ router.get('/:id/print-card.html', auth, async (req, res) => {
 // relying only on live lobby:team_joined broadcasts. Closes the race where
 // a host connects after players have already joined and never sees them.
 // Ordered by joined_at ASC so first-join-first-displayed.
-router.get('/:id/teams', auth, async (req, res) => {
+router.get('/:id/teams', auth, hostOrAdmin, async (req, res) => {
     try {
         const [rows] = await pool.query(
             `SELECT id AS team_id, team_name, member_count, lifeline_used, joined_at
@@ -362,7 +365,7 @@ router.get('/:id/teams', auth, async (req, res) => {
 // /host.html can reuse its existing render function. last_answer_correct
 // reflects the current/most-recent question on event_state; null means
 // "no question yet" or "this team didn't submit for the current question".
-router.get('/:id/scores', auth, async (req, res) => {
+router.get('/:id/scores', auth, hostOrAdmin, async (req, res) => {
     try {
         const eventId = req.params.id;
         const [evRows] = await pool.query('SELECT id FROM events WHERE id = ?', [eventId]);
@@ -413,7 +416,7 @@ router.get('/:id/scores', auth, async (req, res) => {
 // JWT-auth (admin). Returns 404 if the event has no join_code (draft/cancelled
 // without a prior publish). 400x400, high error correction, no-cache so hosts
 // always get the current code after republish.
-router.get('/:id/qr-code.png', auth, async (req, res) => {
+router.get('/:id/qr-code.png', auth, hostOrAdmin, async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT join_code FROM events WHERE id = ?', [req.params.id]);
         if (rows.length === 0 || !rows[0].join_code) {
@@ -440,7 +443,7 @@ router.get('/:id/qr-code.png', auth, async (req, res) => {
 // DELETE /api/events/:id — legacy cancel route. Kept for any external
 // callers; the admin UI now uses PATCH /status with status='cancelled'
 // so it flows through the same validation gate.
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, adminOnly, async (req, res) => {
     try {
         await pool.query("UPDATE events SET status = 'cancelled' WHERE id = ?", [req.params.id]);
         res.json({ message: 'Event cancelled' });

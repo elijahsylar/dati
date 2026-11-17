@@ -1,6 +1,8 @@
 const express = require('express');
 const pool = require('../db');
 const auth = require('../middleware/auth');
+const { requireRole } = auth;
+const adminOnly = requireRole('admin');
 const router = express.Router();
 
 // GET /api/themes — list all themes
@@ -22,7 +24,7 @@ router.get('/', async (req, res) => {
 
 // GET /api/themes/:id — single theme with questions (admin only: the
 // questions include correct_answer)
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, adminOnly, async (req, res) => {
     try {
         const [themes] = await pool.query('SELECT * FROM themes WHERE id = ?', [req.params.id]);
         if (themes.length === 0) return res.status(404).json({ error: 'Theme not found' });
@@ -40,7 +42,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // POST /api/themes — create theme
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, adminOnly, async (req, res) => {
     try {
         const { name, description } = req.body;
         if (!name) return res.status(400).json({ error: 'Theme name is required' });
@@ -62,7 +64,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // PUT /api/themes/:id — update theme
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, adminOnly, async (req, res) => {
     try {
         const { name, description, is_active } = req.body;
         const fields = [];
@@ -86,7 +88,7 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // DELETE /api/themes/:id — soft delete
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, adminOnly, async (req, res) => {
     try {
         await pool.query('UPDATE themes SET is_active = 0 WHERE id = ?', [req.params.id]);
         res.json({ message: 'Theme deactivated' });

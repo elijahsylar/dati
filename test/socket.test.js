@@ -173,6 +173,18 @@ test('/host refuses a token that is forged, expired or not a token', TEST_OPTS, 
     await assert.rejects(h.connected(h.open('/host', { token: 'not-a-jwt' })), /invalid_token/);
 });
 
+test('/host refuses a valid token whose role is not admin or host', TEST_OPTS, async (t) => {
+    const h = await start(t);
+    const sign = (claims) => jwt.sign(claims, process.env.JWT_SECRET, { expiresIn: '5m' });
+    await assert.rejects(h.connected(h.open('/host', { token: sign({ id: 3, username: 'legacy' }) })), /forbidden_role/);
+    await assert.rejects(h.connected(h.open('/host', { token: sign({ id: 4, username: 'other', role: 'player' }) })), /forbidden_role/);
+    await assert.rejects(h.connected(h.open('/host', { token: sign({ id: 5, username: 'caps', role: 'Admin' }) })), /forbidden_role/);
+
+    // Both real roles may run a game.
+    assert.ok((await h.host(1, { role: 'host' })).connected);
+    assert.ok((await h.host(1, { id: 1, username: 'admin', role: 'admin' })).connected);
+});
+
 test('/host accepts a valid token and validates what it is asked to watch', TEST_OPTS, async (t) => {
     const h = await start(t);
     const hostSock = await h.host();
