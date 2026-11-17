@@ -47,7 +47,7 @@ Node.js, Express, Socket.io, MySQL 8 (mysql2), JWT, bcrypt, `qrcode`; vanilla HT
 
 **Data model.** Base schema plus four forward migrations with matching `.down.sql` files (teams, team answers, event state, join codes) and a JavaScript backfill that issues join codes to events published before codes existed.
 
-**First-run setup.** `POST /api/auth/setup` only replaces the seeded placeholder password hash, so it can set the first admin password but can never reset an existing one.
+**First-run setup.** `POST /api/auth/setup` only replaces the seeded placeholder password hash, so it can set the first admin password but can never reset an existing one. It needs a setup secret from the environment (`SETUP_SECRET`, at least 16 characters, sent in the `X-Setup-Secret` header and compared in constant time). With no secret configured, with one shorter than 16 characters, or once no placeholder account is left, the route answers 404.
 
 ## Running locally
 
@@ -72,18 +72,21 @@ mysql -u root -p < db/seed.sql
 Configure and start:
 
 ```bash
-cp .env.example .env      # fill in DB_* and a long random JWT_SECRET
+cp .env.example .env      # fill in DB_*, a long random JWT_SECRET and a SETUP_SECRET (see below)
 node db/migrations/005_backfill_join_codes.js
 npm start                 # http://localhost:3000
 ```
 
-Set the first admin password (works once per seeded account):
+Set the first password of each seeded account (`admin` and `host1`; works once per account). The request must carry the `SETUP_SECRET` from `.env`. It must be at least 16 characters; generate one with `openssl rand -hex 32`. `.env.example` ships it empty, and while it is empty or shorter than 16 characters the route is switched off (404):
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/setup \
   -H "Content-Type: application/json" \
+  -H "X-Setup-Secret: <the SETUP_SECRET from .env>" \
   -d '{"username":"admin","password":"<choose one>"}'
 ```
+
+When the passwords are set, remove `SETUP_SECRET` from `.env` and restart. The route also answers 404 by itself once no seeded placeholder password is left.
 
 | Page | Path |
 |---|---|
@@ -101,7 +104,7 @@ curl -X POST http://localhost:3000/api/auth/setup \
 npm test
 ```
 
-10 tests: the scoring table and its boundaries, join-code alphabet and formatting, HTML escaping, the lifeline excerpt sanitizer and article links, and the first-run setup guard (against a stubbed database pool, so no MySQL is needed). They do not cover the Socket.io game flow.
+15 tests: the scoring table and its boundaries, join-code alphabet and formatting, HTML escaping, the lifeline excerpt sanitizer and article links, and the first-run setup guard and its setup secret (against a stubbed database pool, so no MySQL is needed). They do not cover the Socket.io game flow.
 
 ## Project status
 

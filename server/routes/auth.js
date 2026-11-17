@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const pool = require('../db');
 const router = express.Router();
 
@@ -43,14 +44,53 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// A setup secret shorter than this counts as not set.
+const MIN_SETUP_SECRET_LENGTH = 16;
+
+// True when both are non-empty strings. An array or object must never
+// reach a query: mysql2 would expand it into SQL of its own.
+function hasCredentials(body) {
+    const { username, password } = body || {};
+    return typeof username === 'string' && username !== ''
+        && typeof password === 'string' && password !== '';
+}
+
+// Constant-time comparison. Both sides are hashed first, so the lengths
+// always match and the length of the secret is not leaked either.
+function secretMatches(given, expected) {
+    const a = crypto.createHash('sha256').update(String(given)).digest();
+    const b = crypto.createHash('sha256').update(String(expected)).digest();
+    return crypto.timingSafeEqual(a, b);
+}
+
 // POST /api/auth/setup — first-run password setup. Only sets a password
 // that is still the seeded placeholder, so it cannot reset a real one.
+// Needs the SETUP_SECRET from the environment in the X-Setup-Secret
+// header. With no SETUP_SECRET, or one shorter than 16 characters, the
+// route is off (404), never open.
 router.post('/setup', async (req, res) => {
     try {
-        const { username, password } = req.body;
-        if (!username || !password) {
+        const expected = process.env.SETUP_SECRET;
+        if (!expected || expected.length < MIN_SETUP_SECRET_LENGTH) {
+            return res.status(404).json({ error: 'Not found' });
+        }
+
+        const given = req.get('x-setup-secret');
+        if (!given || !secretMatches(given, expected)) {
+            return res.status(403).json({ error: 'Setup secret required' });
+        }
+
+        if (!hasCredentials(req.body)) {
             return res.status(400).json({ error: 'Username and password required' });
         }
+        const { username, password } = req.body;
+
+        // Once every seeded account has a real password there is nothing
+        // left to set up, so the route answers as if it did not exist.
+        const [pending] = await pool.query(
+            "SELECT COUNT(*) AS n FROM admin_users WHERE password_hash LIKE '%placeholder%'"
+        );
+        if (Number(pending[0].n) === 0) return res.status(404).json({ error: 'Not found' });
 
         const hash = await bcrypt.hash(password, 10);
         const [result] = await pool.query(
