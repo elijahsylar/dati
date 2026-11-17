@@ -104,7 +104,7 @@ When the passwords are set, remove `SETUP_SECRET` from `.env` and restart. The r
 npm test
 ```
 
-15 tests: the scoring table and its boundaries, join-code alphabet and formatting, HTML escaping, the lifeline excerpt sanitizer and article links, and the first-run setup guard and its setup secret (against a stubbed database pool, so no MySQL is needed). They do not cover the Socket.io game flow.
+34 tests. The pure functions: the scoring table and its boundaries, join-code alphabet and formatting, HTML escaping, the lifeline excerpt sanitizer and article links. The first-run setup guard and its setup secret, against a stubbed database pool. The Socket.io game flow (`test/socket.test.js`), with real Socket.io clients against the server on a local port and an in-memory fake of the database pool (`test/fake-db.js`): host authentication, joining as a team and reconnecting with a session token, answers, scoring and the timing check, the early lock and the server timer, the end of the game, and snapshot recovery over both the socket and REST. No MySQL is needed; the SQL itself is not exercised.
 
 ## Project status
 
