@@ -357,9 +357,26 @@ function attachSocketIO(httpServer) {
     async function handleEnd(socket, event_id) {
         if (!Number.isInteger(event_id)) return emitError(socket, 'invalid_input', 'event_id (int) required');
         try {
+            // Only a game in progress can be ended: the event must exist and
+            // be live (events.status; it is live from Start until it ends,
+            // whatever the question state). Anything else is refused before
+            // a timer is cancelled, a row is written or anything is sent.
+            const [evs] = await pool.query('SELECT id, status FROM events WHERE id = ?', [event_id]);
+            if (evs.length === 0) return emitError(socket, 'event_not_found', `No event ${event_id}`);
+            if (evs[0].status !== 'live') {
+                return emitError(socket, 'event_not_live', `This event is ${evs[0].status}. Only a game in progress can be ended.`);
+            }
+            // live -> completed in one statement, so a second End arriving
+            // at the same moment does not announce the result twice.
+            const [done] = await pool.query(
+                "UPDATE events SET status = 'completed' WHERE id = ? AND status = 'live'",
+                [event_id]
+            );
+            if (done.affectedRows === 0) {
+                return emitError(socket, 'event_not_live', 'This event is completed. Only a game in progress can be ended.');
+            }
             cancelQuestionTimer(event_id);
             await pool.query("UPDATE event_state SET status = 'ended' WHERE event_id = ?", [event_id]);
-            await pool.query("UPDATE events SET status = 'completed' WHERE id = ?", [event_id]);
             const scores = await computeScores(event_id);
             let winner_team_id = null;
             let tied_team_ids = [];

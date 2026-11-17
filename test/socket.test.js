@@ -592,9 +592,83 @@ test('host:end_event reports a tie instead of a winner', TEST_OPTS, async (t) =>
     const bears = await h.team(1, 'Quizzly Bears');
     const owls = await h.team(1, 'Night Owls');
 
+    const shown = next(bears.sock, 'question:show');
+    hostSock.emit('host:start_event', { event_id: 1 });
+    await shown;
+
     const result = await end(hostSock, 1);
     assert.equal(result.winner_team_id, null);
     assert.deepEqual(result.tied_team_ids, [bears.team_id, owls.team_id]);
+});
+
+test('host:end_event refuses an unknown event and any event that is not live, and changes nothing', TEST_OPTS, async (t) => {
+    const h = await start(t);
+    const hostSock = await h.host(1);
+    const tv = await h.display(1);
+    await h.team(1, 'Quizzly Bears');
+    let announced = 0;
+    for (const sock of [hostSock, tv]) sock.on('game:ended', () => { announced++; });
+
+    let err = next(hostSock, 'error');
+    hostSock.emit('host:end_event', { event_id: 999 });
+    assert.equal((await err).code, 'event_not_found');
+
+    err = next(hostSock, 'error');
+    hostSock.emit('host:end_event', null);
+    assert.equal((await err).code, 'invalid_input');
+
+    // Event 1 is published but was never started.
+    const statuses = [[1, 'published'], [2, 'draft'], [4, 'cancelled'], [5, 'completed']];
+    const before = JSON.stringify([db.state.events, db.state.eventState]);
+    for (const [eventId, status] of statuses) {
+        err = next(hostSock, 'error');
+        hostSock.emit('host:end_event', { event_id: eventId });
+        const refused = await err;
+        assert.equal(refused.code, 'event_not_live', status);
+        assert.match(refused.message, new RegExp(`This event is ${status}\\.`));
+    }
+    assert.equal(JSON.stringify([db.state.events, db.state.eventState]), before, 'nothing was written');
+    assert.equal(announced, 0, 'nothing was broadcast');
+});
+
+test('host:end_event ends a live game once: a second End is refused and not announced again', TEST_OPTS, async (t) => {
+    const h = await start(t);
+    const hostSock = await h.host(1);
+    const other = await h.host(1);
+    const bears = await h.team(1, 'Quizzly Bears');
+    await h.team(1, 'Night Owls');
+    let announced = 0;
+    bears.sock.on('game:ended', () => { announced++; });
+
+    const shown = next(bears.sock, 'question:show');
+    hostSock.emit('host:start_event', { event_id: 1 });
+    await shown;
+
+    // Two Ends at the same moment: hold both status checks until both are in.
+    let waiting = 0;
+    let release;
+    const bothAsked = new Promise((resolve) => { release = resolve; });
+    db.state.onQuery = async (sql) => {
+        if (!sql.startsWith('SELECT id, status FROM events')) return;
+        if (++waiting === 2) release();
+        await bothAsked;
+    };
+    const refusals = [];
+    hostSock.on('error', (e) => refusals.push(e.code));
+    other.on('error', (e) => refusals.push(e.code));
+    hostSock.emit('host:end_event', { event_id: 1 });
+    other.emit('host:end_event', { event_id: 1 });
+    await h.waitFor(() => refusals.length === 1 && announced >= 1, 'one end and one refusal');
+    db.state.onQuery = null;
+    assert.deepEqual(refusals, ['event_not_live']);
+
+    // And a later End of the finished game is refused too.
+    const err = next(hostSock, 'error');
+    hostSock.emit('host:end_event', { event_id: 1 });
+    assert.equal((await err).code, 'event_not_live');
+    assert.equal(announced, 1);
+    assert.equal(db.state.events[0].status, 'completed');
+    assert.equal(db.state.eventState[0].status, 'ended');
 });
 
 // ---------------------------------------------------------------------

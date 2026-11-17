@@ -124,8 +124,13 @@ function createFakeDb() {
                 e.status = 'live';
                 return { affectedRows: 1 };
             }],
-        ['UPDATE events SET status = \'completed\' WHERE id = ?',
-            ([id]) => { const e = eventOf(id); if (e) e.status = 'completed'; return { affectedRows: e ? 1 : 0 }; }],
+        ['UPDATE events SET status = \'completed\' WHERE id = ? AND status = \'live\'',
+            ([id]) => {
+                const e = eventOf(id);
+                if (!e || e.status !== 'live') return { affectedRows: 0 };
+                e.status = 'completed';
+                return { affectedRows: 1 };
+            }],
 
         // ---- questions ----------------------------------------------
         ['SELECT id, question_text, option_a, option_b, option_c, option_d, difficulty FROM questions WHERE theme_id = ? AND is_active = 1 ORDER BY id LIMIT 1 OFFSET ?',
