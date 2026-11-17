@@ -19,6 +19,9 @@ const { app, server, io } = require('../server/index');
 // Addresses from the ranges reserved for documentation.
 const CLIENT_A = '203.0.113.10';
 const CLIENT_B = '203.0.113.20';
+const CLIENT_C = '203.0.113.30';
+const CLIENT_D = '203.0.113.40';
+const CLIENT_E = '203.0.113.50';
 const SPOOFED = '198.51.100.99';
 
 // Everything the server or the rate limiter logs as a warning or error.
@@ -90,6 +93,33 @@ test('the per-client login limit counts by the forwarded address', async () => {
     assert.equal((await login('one-more')).status, 401);
     // Adding a made-up first hop does not give the limited client a fresh counter.
     assert.equal((await login('one-more', `${SPOOFED}, ${CLIENT_A}`)).status, 429);
+});
+
+test('the username limit is per client address: one address cannot lock an account for another', async () => {
+    const { MAX_PER_USERNAME } = require('../server/middleware/loginLimit');
+    // Client C uses up its tries for "admin" and is cut off...
+    for (let i = 0; i < MAX_PER_USERNAME; i++) {
+        assert.equal((await login('admin', CLIENT_C)).status, 401, `attempt ${i + 1}`);
+    }
+    assert.equal((await login('admin', CLIENT_C)).status, 429);
+    assert.equal((await login('ADMIN', CLIENT_C)).status, 429);
+    // ...but client D can still try "admin", and gets its own full allowance.
+    for (let i = 0; i < MAX_PER_USERNAME; i++) {
+        assert.equal((await login('admin', CLIENT_D)).status, 401, `other client, attempt ${i + 1}`);
+    }
+    assert.equal((await login('admin', CLIENT_D)).status, 429);
+    // Client C is only cut off for that username.
+    assert.equal((await login('host1', CLIENT_C)).status, 401);
+});
+
+test('the per-client limit still cuts an address off across usernames', async () => {
+    const { MAX_PER_CLIENT } = require('../server/middleware/loginLimit');
+    for (let i = 0; i < MAX_PER_CLIENT; i++) {
+        assert.equal((await login('name-' + i, CLIENT_E)).status, 401, `attempt ${i + 1}`);
+    }
+    // A username this address never tried is refused: the address is over its limit.
+    assert.equal((await login('fresh-name', CLIENT_E)).status, 429);
+    assert.equal((await login('fresh-name', CLIENT_D)).status, 401);
 });
 
 test('the rate limiter raised no validation warning about trust proxy or X-Forwarded-For', async () => {

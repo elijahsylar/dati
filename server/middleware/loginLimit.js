@@ -1,11 +1,11 @@
-const { rateLimit } = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
 // Failed logins allowed per window. Successful logins are not counted, so
 // a host and an admin behind the venue's one address are not locked out
 // by using the app normally.
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_PER_CLIENT = 20;    // per client address, across all usernames
-const MAX_PER_USERNAME = 5;   // per username, across all clients
+const MAX_PER_USERNAME = 5;   // per username from one client address
 
 const base = {
     windowMs: WINDOW_MS,
@@ -30,10 +30,14 @@ function usernameKey(username) {
 function loginLimiters() {
     const perClient = rateLimit({ ...base, limit: MAX_PER_CLIENT });
 
+    // Keyed on client address plus username, so failures from one address
+    // cannot lock an account for everyone else. ipKeyGenerator is the
+    // library's own address key (it groups an IPv6 /56 as one client), the
+    // same one the per-client limiter uses.
     const perUsername = rateLimit({
         ...base,
         limit: MAX_PER_USERNAME,
-        keyGenerator: (req) => usernameKey(req.body && req.body.username),
+        keyGenerator: (req) => `${ipKeyGenerator(req.ip)}|${usernameKey(req.body && req.body.username)}`,
     });
 
     return [perClient, perUsername];
