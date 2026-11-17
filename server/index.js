@@ -5,12 +5,13 @@ const http = require('http');
 require('dotenv').config();
 
 const attachSocketIO = require('./socket');
+const { corsOptions } = require('./cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions()));  // CORS_ORIGIN list; no wildcard (see cors.js)
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
@@ -40,11 +41,17 @@ app.get('*', (req, res) => {
 });
 
 const server = http.createServer(app);
-attachSocketIO(server);
+const io = attachSocketIO(server);
 
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n  🎯 D.A.T.I. Backend running on http://localhost:${PORT}`);
-    console.log(`  📱 Admin panel: http://localhost:${PORT}`);
-    console.log(`  🔌 Socket.io namespaces: /host, /player, /display`);
-    console.log(`  💡 To access from iPad, use your local IP: http://<your-ip>:${PORT}\n`);
-});
+// Listen only when started directly (npm start), so tests can load the
+// app without opening the port.
+if (require.main === module) {
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`\n  🎯 D.A.T.I. Backend running on http://localhost:${PORT}`);
+        console.log(`  📱 Admin panel: http://localhost:${PORT}`);
+        console.log(`  🔌 Socket.io namespaces: /host, /player, /display`);
+        console.log(`  💡 To access from iPad, use your local IP: http://<your-ip>:${PORT}\n`);
+    });
+}
+
+module.exports = { app, server, io };

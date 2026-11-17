@@ -3,15 +3,33 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('../db');
+const { loginLimiters } = require('../middleware/loginLimit');
 const router = express.Router();
 
-// POST /api/auth/login
-router.post('/login', async (req, res) => {
+// Login usernames are limited to this plain set. The database compares
+// usernames loosely (case, accents, characters it gives no weight), so a
+// free-form username could be respelled to reach the same account under
+// a fresh rate-limit counter. With this set, case is the only spelling
+// difference left, and the limiter key lowercases.
+const LOGIN_USERNAME = /^[A-Za-z0-9_.-]{1,50}$/;
+
+// Runs before the login limiters and before any query, so the limiter
+// key and the SQL parameter are always the same plain string.
+function requireCredentials(req, res, next) {
+    if (!hasCredentials(req.body)) {
+        return res.status(400).json({ error: 'Username and password required' });
+    }
+    if (!LOGIN_USERNAME.test(req.body.username)) {
+        return res.status(400).json({ error: 'Invalid username' });
+    }
+    next();
+}
+
+// POST /api/auth/login: failed attempts are limited per client address
+// and per username (see middleware/loginLimit.js); over the limit is 429.
+router.post('/login', requireCredentials, ...loginLimiters(), async (req, res) => {
     try {
         const { username, password } = req.body;
-        if (!username || !password) {
-            return res.status(400).json({ error: 'Username and password required' });
-        }
 
         const [rows] = await pool.query(
             'SELECT * FROM admin_users WHERE username = ? AND is_active = 1',

@@ -37,7 +37,7 @@ flowchart LR
 
 ## Stack
 
-Node.js, Express, Socket.io, MySQL 8 (mysql2), JWT, bcrypt, `qrcode`; vanilla HTML, CSS and JavaScript on the client, installable as a PWA. Tests use `node:test`.
+Node.js, Express, Socket.io, MySQL 8 (mysql2), JWT, bcrypt, `express-rate-limit`, `qrcode`; vanilla HTML, CSS and JavaScript on the client, installable as a PWA. Tests use `node:test`.
 
 ## Technically notable parts
 
@@ -46,6 +46,8 @@ Node.js, Express, Socket.io, MySQL 8 (mysql2), JWT, bcrypt, `qrcode`; vanilla HT
 **Server-authoritative timing.** The question timer runs on the server. Clients render the remaining seconds from the server's start time, and late joiners get the remaining time from the snapshot, so every device counts down to the same deadline.
 
 **Data model.** Base schema plus four forward migrations with matching `.down.sql` files (teams, team answers, event state, join codes) and a JavaScript backfill that issues join codes to events published before codes existed.
+
+**CORS and login limits.** The origins listed in `CORS_ORIGIN` (comma-separated, exact, no wildcard; by default only `http://localhost:<PORT>`) are the only ones that receive CORS headers, for the REST API and for the Socket.io HTTP handshake. Requests from any other origin are still answered, but a browser will not let that page read the response. WebSocket connections are not origin-checked: `/display` and `/player` are public by design, and `/host` needs a token. The app's own pages are same-origin and need no entry. Failed logins are limited to 5 per username and 20 per client address in 15 minutes, after which `POST /api/auth/login` answers 429; successful logins are not counted. A login username may only contain the letters A to Z in either case, digits, `_`, `.` and `-`, and be at most 50 characters; anything else, and any username or password that is not a non-empty string, is refused with 400 before it is counted or queried. Upper and lower case spellings of a username share one counter. The counters are in memory, per process.
 
 **First-run setup.** `POST /api/auth/setup` only replaces the seeded placeholder password hash, so it can set the first admin password but can never reset an existing one. It needs a setup secret from the environment (`SETUP_SECRET`, at least 16 characters, sent in the `X-Setup-Secret` header and compared in constant time). With no secret configured, with one shorter than 16 characters, or once no placeholder account is left, the route answers 404.
 
@@ -96,7 +98,7 @@ When the passwords are set, remove `SETUP_SECRET` from `.env` and restart. The r
 | Team join | `/join.html` |
 | TV display | `/display.html` |
 
-`VENUE_NAME` sets the footer on the printed join cards, and `LIFELINE_CONTACT` the contact in the lifeline's User-Agent.
+`VENUE_NAME` sets the footer on the printed join cards, and `LIFELINE_CONTACT` the contact in the lifeline's User-Agent, and `CORS_ORIGIN` lists the other origins allowed to call the API (not needed when the pages are served by this server).
 
 ### Tests
 
@@ -104,7 +106,7 @@ When the passwords are set, remove `SETUP_SECRET` from `.env` and restart. The r
 npm test
 ```
 
-41 tests. The pure functions: the scoring table and its boundaries, join-code alphabet and formatting, HTML escaping, the lifeline excerpt sanitizer and article links. The first-run setup guard and its setup secret, against a stubbed database pool. Role enforcement on every REST route (`test/roles.test.js`). The Socket.io game flow (`test/socket.test.js`), with real Socket.io clients against the server on a local port and an in-memory fake of the database pool (`test/fake-db.js`): host authentication and roles, joining as a team and reconnecting with a session token, answers, scoring and the timing check, the early lock and the server timer, the end of the game, and snapshot recovery over both the socket and REST. No MySQL is needed; the SQL itself is not exercised.
+53 tests. The pure functions: the scoring table and its boundaries, join-code alphabet and formatting, HTML escaping, the lifeline excerpt sanitizer and article links. The first-run setup guard and its setup secret, against a stubbed database pool. Role enforcement on every REST route (`test/roles.test.js`). The CORS origin list on REST and Socket.io (`test/cors.test.js`) and the login limits (`test/login-limit.test.js`). The Socket.io game flow (`test/socket.test.js`), with real Socket.io clients against the server on a local port and an in-memory fake of the database pool (`test/fake-db.js`): host authentication and roles, joining as a team and reconnecting with a session token, answers, scoring and the timing check, the early lock and the server timer, the end of the game, and snapshot recovery over both the socket and REST. No MySQL is needed; the SQL itself is not exercised.
 
 ## Project status
 

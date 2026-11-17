@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('./db');
 const { HOST_CONSOLE_ROLES } = require('./middleware/auth');
+const { corsOptions } = require('./cors');
 
 // =====================================================================
 //  D.A.T.I. — Socket.io wiring for Phase 1 multiplayer core
@@ -34,7 +35,9 @@ function computePoints(responseTimeMs, isCorrect, difficulty) {
 let broadcastFn = null;
 
 function attachSocketIO(httpServer) {
-    const io = new Server(httpServer);
+    // Same origin list as the REST API. Socket.io sends no CORS headers
+    // at all without this; with it, only the listed origins get them.
+    const io = new Server(httpServer, { cors: corsOptions() });
     const hostNs    = io.of('/host');
     const playerNs  = io.of('/player');
     const displayNs = io.of('/display');
