@@ -272,9 +272,19 @@ function attachSocketIO(httpServer) {
             try {
                 const [evs] = await pool.query('SELECT id, status FROM events WHERE id = ?', [event_id]);
                 if (evs.length === 0) return emitError(socket, 'event_not_found', `No event ${event_id}`);
-                if (!['published', 'draft'].includes(evs[0].status)) {
-                    return emitError(socket, 'invalid_state', `Event status is ${evs[0].status}; expected published|draft`);
-                }
+                // Only a published event can be started. Publishing is an
+                // admin action, so a host cannot take a draft live here.
+                const refuse = (status) => (status === 'live'
+                    ? emitError(socket, 'already_started', 'This event has already been started.')
+                    : emitError(socket, 'event_not_published', `This event is ${status}. Only a published event can be started.`));
+                if (evs[0].status !== 'published') return refuse(evs[0].status);
+                // published -> live in one statement, so two hosts pressing
+                // Start together cannot both get through.
+                const [claimed] = await pool.query(
+                    "UPDATE events SET status = 'live' WHERE id = ? AND status = 'published'",
+                    [event_id]
+                );
+                if (claimed.affectedRows === 0) return refuse('live');
                 // Ensure event_state row exists, status=lobby, index=-1
                 await pool.query(
                     `INSERT INTO event_state (event_id, current_question_index, status)
@@ -286,7 +296,6 @@ function attachSocketIO(httpServer) {
                          status                 = 'lobby'`,
                     [event_id]
                 );
-                await pool.query("UPDATE events SET status = 'live' WHERE id = ?", [event_id]);
                 socket.join(roomName(event_id));
                 const result = await showQuestion(event_id);
                 if (result.error) return emitError(socket, result.error, `start_event: ${result.error}`);

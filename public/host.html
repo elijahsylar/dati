@@ -593,7 +593,8 @@ function onGameEnded(p) {
 
 function onServerError(p) {
     console.warn('server error:', p);
-    alert('Server error: ' + (p.code || '?') + '\n' + (p.message || ''));
+    // The server's message says what was refused and why; the code is for support.
+    alert((p.message || 'The server refused that action.') + '\n(' + (p.code || 'error') + ')');
 }
 
 // --- rendering ---

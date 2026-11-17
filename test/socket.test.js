@@ -36,12 +36,15 @@ function question(id, themeId, correct, difficulty = 'easy') {
 
 // Event 1: published, two questions, 5 s limit. Event 2: a draft.
 // Event 3: published, one question, 1 s limit (for the timer test).
+// Events 4 and 5: cancelled and completed.
 function seed() {
     const s = db.state;
     s.events = [
         { id: 1, title: 'Tuesday Trivia', theme_id: 1, status: 'published', join_code: 'ABC234', question_count: 2, time_limit_seconds: 5 },
         { id: 2, title: 'Draft Night', theme_id: 1, status: 'draft', join_code: null, question_count: 2, time_limit_seconds: 5 },
         { id: 3, title: 'Quick Round', theme_id: 2, status: 'published', join_code: 'XYZ789', question_count: 1, time_limit_seconds: 1 },
+        { id: 4, title: 'Called Off', theme_id: 1, status: 'cancelled', join_code: 'CAN234', question_count: 2, time_limit_seconds: 5 },
+        { id: 5, title: 'Last Week', theme_id: 1, status: 'completed', join_code: 'DNE234', question_count: 2, time_limit_seconds: 5 },
     ];
     s.questions = [question(11, 1, 'B'), question(12, 1, 'C', 'hard'), question(21, 2, 'A')];
     s.eventState = [];
@@ -49,6 +52,7 @@ function seed() {
     s.teamAnswers = [];
     s.nextTeamId = 1;
     s.failNext = null;
+    s.onQuery = null;
 }
 
 // Starts a server for one test and registers its teardown.
@@ -312,12 +316,98 @@ test('host:start_event shows the first question to teams, host and display, with
     assert.equal(db.state.events[0].status, 'live');
     assert.equal(db.state.eventState[0].status, 'question_active');
 
-    // A live event cannot be started again.
-    const err = next(hostSock, 'error');
-    hostSock.emit('host:start_event', { event_id: 1 });
-    assert.equal((await err).code, 'invalid_state');
-
     await end(hostSock, 1);
+});
+
+test('host:start_event refuses a draft, cancelled or completed event and changes nothing', TEST_OPTS, async (t) => {
+    const h = await start(t);
+    const hostSock = await h.host();
+    const tv = await h.display(2);
+    let shown = false;
+    tv.on('question:show', () => { shown = true; });
+
+    for (const [eventId, status] of [[2, 'draft'], [4, 'cancelled'], [5, 'completed']]) {
+        const err = next(hostSock, 'error');
+        hostSock.emit('host:start_event', { event_id: eventId });
+        const refused = await err;
+        assert.equal(refused.code, 'event_not_published', status);
+        assert.match(refused.message, new RegExp(`This event is ${status}\\.`));
+        assert.equal(db.state.events.find((e) => e.id === eventId).status, status, `${status} event left as it was`);
+        // The refused host is not put in the event's room either.
+        assert.ok(!h.io.of('/host').adapter.rooms.get(`event:${eventId}`)?.has(hostSock.id));
+    }
+    assert.equal(db.state.eventState.length, 0, 'no game state was created');
+    assert.equal(shown, false, 'nothing was broadcast');
+
+    const err = next(hostSock, 'error');
+    hostSock.emit('host:start_event', { event_id: 999 });
+    assert.equal((await err).code, 'event_not_found');
+});
+
+test('host:start_event refuses an event that is already live, and the game in play is untouched', TEST_OPTS, async (t) => {
+    const h = await start(t);
+    const hostSock = await h.host(1);
+    const bears = await h.team(1, 'Quizzly Bears');
+    await h.team(1, 'Night Owls');
+
+    const shown = next(bears.sock, 'question:show');
+    hostSock.emit('host:start_event', { event_id: 1 });
+    await shown;
+    await ask(bears.sock, 'team:submit_answer', { question_id: 11, selected_option: 'B', response_time_ms: 100 });
+    const before = JSON.stringify(db.state.eventState);
+
+    // A second host console (or a second press of Start) is refused.
+    const second = await h.host(1, { id: 1, username: 'admin', role: 'admin' });
+    let shownAgain = false;
+    bears.sock.on('question:show', () => { shownAgain = true; });
+    for (const sock of [second, hostSock]) {
+        const err = next(sock, 'error');
+        sock.emit('host:start_event', { event_id: 1 });
+        const refused = await err;
+        assert.equal(refused.code, 'already_started');
+        assert.equal(refused.message, 'This event has already been started.');
+    }
+    assert.equal(JSON.stringify(db.state.eventState), before, 'question index and clock were not reset');
+    assert.equal(shownAgain, false);
+    assert.equal(db.state.teamAnswers.length, 1);
+
+    // The second console still follows the game it is watching.
+    const ended = next(second, 'game:ended');
+    await end(hostSock, 1);
+    await ended;
+});
+
+test('host:start_event lets only one of two simultaneous starts through', TEST_OPTS, async (t) => {
+    const h = await start(t);
+    const a = await h.host(1);
+    const b = await h.host(1);
+    const bears = await h.team(1, 'Quizzly Bears');
+    let shows = 0;
+    bears.sock.on('question:show', () => { shows++; });
+
+    // Hold both status checks until both have been asked, so each start
+    // sees the event as published before either has made it live.
+    let waiting = 0;
+    let release;
+    const bothAsked = new Promise((resolve) => { release = resolve; });
+    db.state.onQuery = async (sql) => {
+        if (!sql.startsWith('SELECT id, status FROM events')) return;
+        if (++waiting === 2) release();
+        await bothAsked;
+    };
+
+    const refusals = [];
+    a.on('error', (e) => refusals.push(e.code));
+    b.on('error', (e) => refusals.push(e.code));
+    a.emit('host:start_event', { event_id: 1 });
+    b.emit('host:start_event', { event_id: 1 });
+    await h.waitFor(() => refusals.length === 1 && shows >= 1, 'one start and one refusal');
+    db.state.onQuery = null;
+    assert.deepEqual(refusals, ['already_started']);
+    assert.equal(shows, 1);
+    assert.equal(db.state.eventState[0].current_question_index, 0);
+
+    await end(a, 1);
 });
 
 test('a correct answer is scored on the server, saved once, and the scores go out', TEST_OPTS, async (t) => {

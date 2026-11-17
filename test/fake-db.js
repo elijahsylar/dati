@@ -24,6 +24,7 @@ function createFakeDb() {
         nextTeamId: 1,
         openConnections: 0,
         failNext: null,    // set to an Error to make the next query throw it
+        onQuery: null,     // async (sql) => {} run before each query; lets a test hold one back
     };
 
     const stateOf = (eventId) => s.eventState.find(r => r.event_id === Number(eventId));
@@ -116,8 +117,13 @@ function createFakeDb() {
             ([id]) => s.events.filter(e => e.id === id).map(e => ({ id: e.id, status: e.status }))],
         ['SELECT id FROM events WHERE id = ?',
             ([id]) => s.events.filter(e => e.id === Number(id)).map(e => ({ id: e.id }))],
-        ['UPDATE events SET status = \'live\' WHERE id = ?',
-            ([id]) => { eventOf(id).status = 'live'; return { affectedRows: 1 }; }],
+        ['UPDATE events SET status = \'live\' WHERE id = ? AND status = \'published\'',
+            ([id]) => {
+                const e = eventOf(id);
+                if (!e || e.status !== 'published') return { affectedRows: 0 };
+                e.status = 'live';
+                return { affectedRows: 1 };
+            }],
         ['UPDATE events SET status = \'completed\' WHERE id = ?',
             ([id]) => { const e = eventOf(id); if (e) e.status = 'completed'; return { affectedRows: e ? 1 : 0 }; }],
 
@@ -182,6 +188,7 @@ function createFakeDb() {
     async function query(sql, params = []) {
         if (s.failNext) { const e = s.failNext; s.failNext = null; throw e; }
         const flat = sql.replace(/\s+/g, ' ').trim();
+        if (s.onQuery) await s.onQuery(flat);
         const found = handlers.find(([start]) => flat.startsWith(start));
         if (!found) throw new Error(`fake-db: no handler for SQL: ${flat}`);
         // mysql2 resolves to [rows or result, fields].
