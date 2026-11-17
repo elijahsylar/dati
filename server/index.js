@@ -10,6 +10,12 @@ const { corsOptions } = require('./cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust X-Forwarded-For only from a reverse proxy on this machine
+// (loopback). req.ip is then the real client behind that proxy, which the
+// login limits count by. A direct client cannot set its own address: its
+// header is ignored because it does not arrive from loopback.
+app.set('trust proxy', 'loopback');
+
 // Middleware
 app.use(cors(corsOptions()));  // CORS_ORIGIN list; no wildcard (see cors.js)
 app.use(express.json());

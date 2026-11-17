@@ -21,6 +21,7 @@ function createFakeDb() {
         eventState: [],    // { event_id, current_question_index, current_question_id, question_started_at, status }
         teams: [],         // { id, event_id, team_name, session_token, member_count, lifeline_used }
         teamAnswers: [],   // { team_id, question_id, selected_option, response_time_ms, points_earned }
+        adminUsers: [],    // { id, username, password_hash, display_name, role, is_active }
         nextTeamId: 1,
         openConnections: 0,
         failNext: null,    // set to an Error to make the next query throw it
@@ -149,6 +150,11 @@ function createFakeDb() {
             ([eventId, questionId]) => questionWithEvent(eventId, questionId)],
         ['SELECT q.id, q.question_text, q.option_a, q.option_b, q.option_c, q.option_d, q.difficulty, e.time_limit_seconds',
             ([eventId, questionId]) => questionWithEvent(eventId, questionId).map(({ correct_answer, ...rest }) => rest)],
+
+        // ---- admin users (login) ------------------------------------
+        ['SELECT * FROM admin_users WHERE username = ? AND is_active = 1',
+            ([username]) => s.adminUsers.filter(u => u.is_active
+                && u.username.toLowerCase() === String(username).toLowerCase())],
 
         // ---- teams and answers --------------------------------------
         ['SELECT id, event_id, team_name FROM teams WHERE session_token = ?',
