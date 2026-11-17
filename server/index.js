@@ -6,6 +6,7 @@ require('dotenv').config();
 
 const attachSocketIO = require('./socket');
 const { corsOptions } = require('./cors');
+const { jwtSecretProblem } = require('./config');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,8 +51,15 @@ const server = http.createServer(app);
 const io = attachSocketIO(server);
 
 // Listen only when started directly (npm start), so tests can load the
-// app without opening the port.
+// app without opening the port. A missing, placeholder or short
+// JWT_SECRET stops the start here, before the port is opened: tokens
+// signed with a guessable secret can be forged.
 if (require.main === module) {
+    const problem = jwtSecretProblem();
+    if (problem) {
+        console.error(`Refusing to start: ${problem}`);
+        process.exit(1);
+    }
     server.listen(PORT, '0.0.0.0', () => {
         console.log(`\n  🎯 D.A.T.I. Backend running on http://localhost:${PORT}`);
         console.log(`  📱 Admin panel: http://localhost:${PORT}`);

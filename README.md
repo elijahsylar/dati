@@ -74,10 +74,12 @@ mysql -u root -p < db/seed.sql
 Configure and start:
 
 ```bash
-cp .env.example .env      # fill in DB_*, a long random JWT_SECRET and a SETUP_SECRET (see below)
+cp .env.example .env      # fill in DB_*, JWT_SECRET and SETUP_SECRET (see below)
 node db/migrations/005_backfill_join_codes.js
 npm start                 # http://localhost:3000
 ```
+
+`JWT_SECRET` signs the login tokens and must be a random value of at least 32 characters; generate one with `openssl rand -hex 32`. The server refuses to start, with one line saying why, while it is unset, shorter than that, or still the placeholder from `.env.example`.
 
 Set the first password of each seeded account (`admin` and `host1`; works once per account). The request must carry the `SETUP_SECRET` from `.env`. It must be at least 16 characters; generate one with `openssl rand -hex 32`. `.env.example` ships it empty, and while it is empty or shorter than 16 characters the route is switched off (404):
 
@@ -106,7 +108,7 @@ When the passwords are set, remove `SETUP_SECRET` from `.env` and restart. The r
 npm test
 ```
 
-69 tests. The pure functions: the scoring table and its boundaries, join-code alphabet and formatting, HTML escaping, the lifeline excerpt sanitizer and article links. The first-run setup guard and its setup secret, against a stubbed database pool. Role enforcement on every REST route (`test/roles.test.js`). The admin panel's handling of a host account (`test/admin-panel.test.js`, the real `admin.js` run in a node `vm` against a stand-in DOM, not a browser). The CORS origin list on REST and Socket.io (`test/cors.test.js`) and the login limits (`test/login-limit.test.js`), and the loopback-only proxy trust they count addresses by (`test/trust-proxy.test.js`). The Socket.io game flow (`test/socket.test.js`), with real Socket.io clients against the server on a local port and an in-memory fake of the database pool (`test/fake-db.js`): host authentication and roles, joining as a team and reconnecting with a session token, answers, scoring and the timing check, the early lock and the server timer, the end of the game, and snapshot recovery over both the socket and REST. No MySQL is needed; the SQL itself is not exercised.
+76 tests. The pure functions: the scoring table and its boundaries, join-code alphabet and formatting, HTML escaping, the lifeline excerpt sanitizer and article links. The first-run setup guard and its setup secret, against a stubbed database pool. Role enforcement on every REST route (`test/roles.test.js`). The admin panel's handling of a host account (`test/admin-panel.test.js`, the real `admin.js` run in a node `vm` against a stand-in DOM, not a browser). The CORS origin list on REST and Socket.io (`test/cors.test.js`) and the login limits (`test/login-limit.test.js`), and the loopback-only proxy trust they count addresses by (`test/trust-proxy.test.js`). The Socket.io game flow (`test/socket.test.js`), with real Socket.io clients against the server on a local port and an in-memory fake of the database pool (`test/fake-db.js`): host authentication and roles, joining as a team and reconnecting with a session token, answers, scoring and the timing check, the early lock and the server timer, the end of the game, and snapshot recovery over both the socket and REST. The start-up check on `JWT_SECRET` (`test/startup-config.test.js`, which also starts the real server as a child process and stops it). No MySQL is needed; the SQL itself is not exercised.
 
 ## Project status
 
