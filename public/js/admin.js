@@ -59,10 +59,24 @@ function showLogin() {
     document.getElementById('app-screen').style.display = 'none';
 }
 
+// The admin API refuses a host account (403), so the panel has nothing to
+// show one. The server decides what an account may do; this only picks
+// the page to show.
+function isHostAccount(user) {
+    return !!user && user.role === 'host';
+}
+
 function showApp() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-screen').style.display = 'block';
     document.getElementById('user-display').textContent = currentUser.display_name;
+    // A host gets a short notice with a link to the host page instead of
+    // the tabs, and none of the admin-only requests are sent.
+    const host = isHostAccount(currentUser);
+    document.getElementById('host-notice').style.display = host ? 'block' : 'none';
+    document.getElementById('admin-tabs').style.display = host ? 'none' : '';
+    document.getElementById('admin-content').style.display = host ? 'none' : '';
+    if (host) return;
     // Always open on the Dashboard (which loads its data); after a logout the
     // previously open tab would otherwise show the last session's list.
     switchTab('dashboard');
